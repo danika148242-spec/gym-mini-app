@@ -6,7 +6,7 @@
 <title>Gym Duel & Tracker</title>
 <!-- Telegram Web App SDK -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<!-- Chart.js для графиков прогресса -->
+<!-- Chart.js для графиков -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root {
@@ -52,6 +52,14 @@
     background: var(--bg);
   }
 
+  /* КОНТЕЙНЕР ДЛЯ ЭКРАНОВ (занимает всё пространство выше Tab Bar) */
+  .screens-viewport {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+  }
+
   .screen {
     position: absolute;
     inset: 0;
@@ -67,7 +75,16 @@
     opacity: 1;
     pointer-events: all;
     transform: translateX(0);
-    z-index: 10;
+    z-index: 5;
+  }
+
+  /* Каталог на весь экран поверх всего */
+  #screen-catalog {
+    position: fixed;
+    inset: 0;
+    max-width: 480px;
+    margin: 0 auto;
+    z-index: 999;
   }
 
   .scroll-area {
@@ -122,15 +139,18 @@
   }
   .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-  /* TAB BAR */
+  /* TAB BAR (ЖЕСТКО ЗАФИКСИРОВАН ВНИЗУ) */
   .tab-bar {
     display: flex;
-    background: rgba(255,255,255,0.95);
+    background: rgba(255,255,255,0.96);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-top: 0.5px solid var(--separator);
-    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    padding-top: 6px;
     flex-shrink: 0;
+    z-index: 50;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
   }
   .tab-item {
     flex: 1;
@@ -138,7 +158,7 @@
     flex-direction: column;
     align-items: center;
     gap: 3px;
-    padding: 8px 2px 4px;
+    padding: 4px 2px;
     background: none;
     border: none;
     cursor: pointer;
@@ -311,7 +331,7 @@
     margin-top: 2px;
   }
 
-  /* ARENA / COMPETITION CARDS */
+  /* ARENA / DUELS */
   .stat-grid-3 {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -368,7 +388,7 @@
   .duel-bar-user { background: var(--accent); height: 100%; transition: width 0.3s; }
   .duel-bar-friend { background: var(--warning); height: 100%; transition: width 0.3s; }
 
-  /* ACTIVITY FEED */
+  /* FEED */
   .feed-item {
     background: var(--card);
     border-radius: var(--r);
@@ -385,7 +405,6 @@
   .feed-user { font-size: 14px; font-weight: 700; }
   .feed-time { font-size: 11px; color: var(--text-secondary); margin-left: auto; }
   .feed-text { font-size: 14px; line-height: 1.35; color: var(--text-primary); margin-bottom: 10px; }
-  .feed-highlight { color: var(--accent); font-weight: 700; }
   .feed-actions {
     display: flex;
     gap: 6px;
@@ -401,11 +420,6 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    transition: transform 0.1s;
-  }
-  .reaction-btn.active {
-    background: #007AFF18;
-    border: 1px solid var(--accent);
   }
 
   /* MODAL */
@@ -413,7 +427,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.4);
-    z-index: 100;
+    z-index: 1000;
     display: flex;
     align-items: flex-end;
     opacity: 0;
@@ -476,7 +490,7 @@
     font-weight: 600;
     opacity: 0;
     transition: 0.2s;
-    z-index: 200;
+    z-index: 2000;
     backdrop-filter: blur(10px);
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -485,178 +499,203 @@
 <body>
 <div id="app">
 
-  <!-- ================= TAB 1: ЖУРНАЛ (LOG) ================= -->
-  <div class="screen active" id="screen-log">
-    <div class="nav-bar">
-      <div class="nav-bar-row">
-        <div class="nav-profile">
-          <div class="user-avatar" id="nav-user-avatar">🏋️</div>
-          <div>
-            <div class="nav-title" id="nav-user-name">Тренировка</div>
-            <div style="font-size:11px; color:var(--text-secondary);" id="nav-date-sub">Сегодня</div>
+  <!-- ВЬЮПОРТ ДЛЯ ЭКРАНОВ -->
+  <div class="screens-viewport">
+
+    <!-- ================= TAB 1: ЖУРНАЛ ================= -->
+    <div class="screen active" id="screen-log">
+      <div class="nav-bar">
+        <div class="nav-bar-row">
+          <div class="nav-profile">
+            <div class="user-avatar" id="nav-user-avatar">🏋️</div>
+            <div>
+              <div class="nav-title" id="nav-user-name">Тренировка</div>
+              <div style="font-size:11px; color:var(--text-secondary);" id="nav-date-sub">Сегодня</div>
+            </div>
+          </div>
+          <button class="btn-secondary" onclick="openCatalog('log')">Каталог 🔍</button>
+        </div>
+      </div>
+
+      <div class="scroll-area">
+        <div class="date-scroll" id="date-scroll"></div>
+
+        <div class="section-header">Выбранное упражнение</div>
+        <div class="ex-preview" onclick="openCatalog('log')">
+          <div class="ex-preview-img" id="log-ex-emoji">💪</div>
+          <div style="flex:1; overflow:hidden;">
+            <div style="font-size:15px; font-weight:700;" id="log-ex-name">Выбрать упражнение</div>
+            <div style="font-size:12px; color:var(--text-secondary);" id="log-ex-cat">Нажмите для выбора из каталога</div>
+          </div>
+          <div style="font-size:16px; color:var(--accent);">›</div>
+        </div>
+
+        <div class="section-header">Параметры сета</div>
+        <div class="card">
+          <div class="card-row">
+            <span style="font-weight:600;">Подход</span>
+            <div class="stepper">
+              <button class="stepper-btn" onclick="stepSet(-1)">−</button>
+              <input class="stepper-val" id="in-set" type="number" value="1" readonly>
+              <button class="stepper-btn" onclick="stepSet(1)">+</button>
+            </div>
+          </div>
+          <div class="card-row">
+            <span style="font-weight:600;" id="label-weight">Вес (кг)</span>
+            <div class="stepper">
+              <button class="stepper-btn" onclick="stepWeight(-2.5)">−</button>
+              <input class="stepper-val" id="in-weight" type="number" value="60" step="2.5" oninput="updateLive1RM()">
+              <button class="stepper-btn" onclick="stepWeight(2.5)">+</button>
+            </div>
+          </div>
+          <div class="card-row">
+            <span style="font-weight:600;">Повторения</span>
+            <div class="stepper">
+              <button class="stepper-btn" onclick="stepReps(-1)">−</button>
+              <input class="stepper-val" id="in-reps" type="number" value="10" oninput="updateLive1RM()">
+              <button class="stepper-btn" onclick="stepReps(1)">+</button>
+            </div>
+          </div>
+          <div class="card-row" style="background:#F9F9FB;">
+            <span style="font-size:13px; color:var(--text-secondary);">Расчетный 1RM (Индекс силы):</span>
+            <span style="font-size:14px; font-weight:800; color:var(--accent);" id="live-1rm">79.9 кг</span>
           </div>
         </div>
-        <button class="btn-secondary" onclick="openCatalog('log')">Каталог 🔍</button>
+
+        <button class="btn-primary" onclick="saveSet()">＋ Записать подход</button>
+
+        <div class="section-header">История за день</div>
+        <div class="card" id="today-sets-list">
+          <div style="padding:24px; text-align:center; color:var(--text-secondary); font-size:14px;">Нет подходов за этот день</div>
+        </div>
       </div>
     </div>
 
-    <div class="scroll-area">
-      <div class="date-scroll" id="date-scroll"></div>
-
-      <div class="section-header">Выбранное упражнение</div>
-      <div class="ex-preview" onclick="openCatalog('log')">
-        <div class="ex-preview-img" id="log-ex-emoji">💪</div>
-        <div style="flex:1; overflow:hidden;">
-          <div style="font-size:15px; font-weight:700;" id="log-ex-name">Выбрать упражнение</div>
-          <div style="font-size:12px; color:var(--text-secondary);" id="log-ex-cat">Нажмите для выбора из каталога</div>
+    <!-- ================= TAB 2: ПРОГРЕСС + СРАВНЕНИЕ ГРАФИКОВ ================= -->
+    <div class="screen" id="screen-stats">
+      <div class="nav-bar">
+        <div class="nav-bar-row">
+          <div class="nav-title">График роста весов</div>
+          <button class="btn-secondary" onclick="openCatalog('stats')">Сменить упр.</button>
         </div>
-        <div style="font-size:16px; color:var(--accent);">›</div>
       </div>
-
-      <div class="section-header">Параметры сета</div>
-      <div class="card">
-        <div class="card-row">
-          <span style="font-weight:600;">Подход</span>
-          <div class="stepper">
-            <button class="stepper-btn" onclick="stepSet(-1)">−</button>
-            <input class="stepper-val" id="in-set" type="number" value="1" readonly>
-            <button class="stepper-btn" onclick="stepSet(1)">+</button>
+      <div class="scroll-area">
+        <div class="ex-preview" style="margin-top:10px;" onclick="openCatalog('stats')">
+          <div class="ex-preview-img" id="stats-ex-emoji">📈</div>
+          <div style="flex:1;">
+            <div style="font-size:15px; font-weight:700;" id="stats-ex-name">Жим лежа со свободным весом</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Нажмите для выбора другого упражнения</div>
           </div>
         </div>
-        <div class="card-row">
-          <span style="font-weight:600;" id="label-weight">Вес (кг)</span>
-          <div class="stepper">
-            <button class="stepper-btn" onclick="stepWeight(-2.5)">−</button>
-            <input class="stepper-val" id="in-weight" type="number" value="60" step="2.5" oninput="updateLive1RM()">
-            <button class="stepper-btn" onclick="stepWeight(2.5)">+</button>
+
+        <!-- Сравнение с другом -->
+        <div class="card" style="padding:12px 16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <span style="font-size:14px; font-weight:700;">Сравнить график с другом:</span>
+            <select id="friend-compare-select" onchange="renderChart()" style="background:var(--fill-secondary); border:none; padding:6px 10px; border-radius:10px; font-weight:600;">
+              <option value="none">Без сравнения</option>
+              <option value="daniil">Даниил</option>
+              <option value="alex">Алексей</option>
+            </select>
+          </div>
+          <div style="font-size:11px; color:var(--text-secondary);">Строит параллельные кривые динамики максимального рабочего веса</div>
+        </div>
+
+        <div class="card" style="padding:16px; margin-bottom:12px;">
+          <div style="height:230px; position:relative;">
+            <canvas id="progressChart"></canvas>
           </div>
         </div>
-        <div class="card-row">
-          <span style="font-weight:600;">Повторения</span>
-          <div class="stepper">
-            <button class="stepper-btn" onclick="stepReps(-1)">−</button>
-            <input class="stepper-val" id="in-reps" type="number" value="10" oninput="updateLive1RM()">
-            <button class="stepper-btn" onclick="stepReps(1)">+</button>
+      </div>
+    </div>
+
+    <!-- ================= TAB 3: АРЕНА И ДУЭЛИ ================= -->
+    <div class="screen" id="screen-arena">
+      <div class="nav-bar">
+        <div class="nav-bar-row">
+          <div class="nav-title">⚔️ Соревнования и Баттлы</div>
+          <button class="btn-secondary" onclick="openNewDuelModal()">+ Вызов</button>
+        </div>
+      </div>
+      <div class="scroll-area">
+        <div class="section-header">Мои показатели за месяц</div>
+        <div class="stat-grid-3">
+          <div class="stat-mini-box">
+            <div class="stat-mini-val" id="stat-streak">0 дн.</div>
+            <div class="stat-mini-lbl">Стрик месяца</div>
+          </div>
+          <div class="stat-mini-box">
+            <div class="stat-mini-val" id="stat-tonnage">0 т</div>
+            <div class="stat-mini-lbl">Тоннаж (7 дн)</div>
+          </div>
+          <div class="stat-mini-box">
+            <div class="stat-mini-val" id="stat-top1rm">0 кг</div>
+            <div class="stat-mini-lbl">Топ 1RM</div>
           </div>
         </div>
-        <div class="card-row" style="background:#F9F9FB;">
-          <span style="font-size:13px; color:var(--text-secondary);">Расчетный 1RM (Индекс силы):</span>
-          <span style="font-size:14px; font-weight:800; color:var(--accent);" id="live-1rm">79.9 кг</span>
+
+        <div class="section-header">
+          <span>Активные дуэли</span>
+          <span style="color:var(--accent); font-size:12px; cursor:pointer;" onclick="shareInviteLink()">👥 Позвать друга</span>
         </div>
-      </div>
-
-      <button class="btn-primary" onclick="saveSet()">＋ Записать подход</button>
-
-      <div class="section-header">История за день</div>
-      <div class="card" id="today-sets-list">
-        <div style="padding:24px; text-align:center; color:var(--text-secondary); font-size:14px;">Нет подходов за этот день</div>
+        <div id="active-duels-container"></div>
       </div>
     </div>
+
+    <!-- ================= TAB 4: ЛЕНТА АКТИВНОСТИ ================= -->
+    <div class="screen" id="screen-feed">
+      <div class="nav-bar">
+        <div class="nav-bar-row">
+          <div class="nav-title">🔥 Лента результатов</div>
+          <button class="btn-secondary" onclick="shareWorkout()">Поделиться</button>
+        </div>
+      </div>
+      <div class="scroll-area">
+        <div style="padding:8px 0;" id="feed-container"></div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 5: ПРОГРАММЫ ================= -->
+    <div class="screen" id="screen-templates">
+      <div class="nav-bar">
+        <div class="nav-bar-row">
+          <div class="nav-title">Мои программы</div>
+          <button class="btn-secondary" onclick="openNewTemplateModal()">+ Создать</button>
+        </div>
+      </div>
+      <div class="scroll-area">
+        <div id="templates-container" style="padding-top:10px;"></div>
+      </div>
+    </div>
+
+  </div> <!-- /screens-viewport -->
+
+  <!-- ================= TAB BAR (НИЖНЯЯ ПАНЕЛЬ ИЗ 5 КНОПОК) ================= -->
+  <div class="tab-bar">
+    <button class="tab-item active" onclick="switchTab('log')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      Журнал
+    </button>
+    <button class="tab-item" onclick="switchTab('stats')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Прогресс
+    </button>
+    <button class="tab-item" onclick="switchTab('arena')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Арена
+    </button>
+    <button class="tab-item" onclick="switchTab('feed')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Лента
+    </button>
+    <button class="tab-item" onclick="switchTab('templates')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      Программы
+    </button>
   </div>
 
-  <!-- ================= TAB 2: ПРОГРЕСС + СРАВНЕНИЕ ГРАФИКОВ ================= -->
-  <div class="screen" id="screen-stats">
-    <div class="nav-bar">
-      <div class="nav-bar-row">
-        <div class="nav-title">График роста весов</div>
-        <button class="btn-secondary" onclick="openCatalog('stats')">Сменить упр.</button>
-      </div>
-    </div>
-    <div class="scroll-area">
-      <div class="ex-preview" style="margin-top:10px;" onclick="openCatalog('stats')">
-        <div class="ex-preview-img" id="stats-ex-emoji">📈</div>
-        <div style="flex:1;">
-          <div style="font-size:15px; font-weight:700;" id="stats-ex-name">Жим лежа со свободным весом</div>
-          <div style="font-size:12px; color:var(--text-secondary);">Нажмите для выбора другого упражнения</div>
-        </div>
-      </div>
-
-      <!-- Сравнение с другом -->
-      <div class="card" style="padding:12px 16px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-          <span style="font-size:14px; font-weight:700;">Сравнить график с другом:</span>
-          <select id="friend-compare-select" onchange="renderChart()" style="background:var(--fill-secondary); border:none; padding:6px 10px; border-radius:10px; font-weight:600;">
-            <option value="none">Без сравнения</option>
-            <option value="daniil">Даниил</option>
-            <option value="alex">Алексей</option>
-          </select>
-        </div>
-        <div style="font-size:11px; color:var(--text-secondary);">Отображает две параллельные кривые динамики максимального рабочего веса</div>
-      </div>
-
-      <div class="card" style="padding:16px; margin-bottom:12px;">
-        <div style="height:230px; position:relative;">
-          <canvas id="progressChart"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ================= TAB 3: АРЕНА И ДУЭЛИ ================= -->
-  <div class="screen" id="screen-arena">
-    <div class="nav-bar">
-      <div class="nav-bar-row">
-        <div class="nav-title">⚔️ Соревнования и Баттлы</div>
-        <button class="btn-secondary" onclick="openNewDuelModal()">+ Вызов</button>
-      </div>
-    </div>
-    <div class="scroll-area">
-      <div class="section-header">Мои показатели за месяц</div>
-      <div class="stat-grid-3">
-        <div class="stat-mini-box">
-          <div class="stat-mini-val" id="stat-streak">0 дн.</div>
-          <div class="stat-mini-lbl">Стрик месяца</div>
-        </div>
-        <div class="stat-mini-box">
-          <div class="stat-mini-val" id="stat-tonnage">0 т</div>
-          <div class="stat-mini-lbl">Тоннаж (7 дн)</div>
-        </div>
-        <div class="stat-mini-box">
-          <div class="stat-mini-val" id="stat-top1rm">0 кг</div>
-          <div class="stat-mini-lbl">Топ 1RM</div>
-        </div>
-      </div>
-
-      <div class="section-header">
-        <span>Активные дуэли</span>
-        <span style="color:var(--accent); font-size:12px; cursor:pointer;" onclick="shareInviteLink()">👥 Позвать друга</span>
-      </div>
-      <div id="active-duels-container">
-        <!-- Дуэли генерируются скриптом -->
-      </div>
-    </div>
-  </div>
-
-  <!-- ================= TAB 4: ЛЕНТА АКТИВНОСТИ ================= -->
-  <div class="screen" id="screen-feed">
-    <div class="nav-bar">
-      <div class="nav-bar-row">
-        <div class="nav-title">🔥 Лента результатов</div>
-        <button class="btn-secondary" onclick="shareWorkout()">Поделиться</button>
-      </div>
-    </div>
-    <div class="scroll-area">
-      <div style="padding:8px 0;" id="feed-container">
-        <!-- Лента карточек -->
-      </div>
-    </div>
-  </div>
-
-  <!-- ================= TAB 5: ПРОГРАММЫ (TEMPLATES) ================= -->
-  <div class="screen" id="screen-templates">
-    <div class="nav-bar">
-      <div class="nav-bar-row">
-        <div class="nav-title">Мои программы</div>
-        <button class="btn-secondary" onclick="openNewTemplateModal()">+ Создать</button>
-      </div>
-    </div>
-    <div class="scroll-area">
-      <div id="templates-container" style="padding-top:10px;"></div>
-    </div>
-  </div>
-
-  <!-- ================= SCREEN: FULLSCREEN КАТАЛОГ УПРАЖНЕНИЙ ================= -->
-  <div class="screen" id="screen-catalog" style="z-index:60;">
+  <!-- ================= SCREEN: ПОЛНОЭКРАННЫЙ КАТАЛОГ ================= -->
+  <div class="screen" id="screen-catalog">
     <div class="nav-bar">
       <div class="nav-bar-row">
         <button class="btn-secondary" onclick="closeCatalog()">✕ Закрыть</button>
@@ -674,7 +713,7 @@
     </div>
   </div>
 
-  <!-- ================= MODAL: НОВЫЙ ВЫЗОВ ДРУГУ ================= -->
+  <!-- ================= MODAL: НОВЫЙ ВЫЗОВ ================= -->
   <div class="modal-overlay" id="modal-duel" onclick="closeModalOnOverlay(event, 'modal-duel')">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
@@ -708,42 +747,17 @@
     </div>
   </div>
 
-  <!-- ================= TAB BAR (5 TABS) ================= -->
-  <div class="tab-bar">
-    <button class="tab-item active" onclick="switchTab('log')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-      Журнал
-    </button>
-    <button class="tab-item" onclick="switchTab('stats')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      Прогресс
-    </button>
-    <button class="tab-item" onclick="switchTab('arena')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-      Арена
-    </button>
-    <button class="tab-item" onclick="switchTab('feed')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Лента
-    </button>
-    <button class="tab-item" onclick="switchTab('templates')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-      Программы
-    </button>
-  </div>
-
   <div class="toast" id="toast"></div>
 </div>
 
 <script>
-// ==================== 1. ТЕЛЕГРАМ АВТОРИЗАЦИЯ И ИНИЦИАЛИЗАЦИЯ ====================
+// ==================== 1. ИНИЦИАЛИЗАЦИЯ И ДАННЫЕ ====================
 const tg = window.Telegram?.WebApp;
 if (tg) {
   tg.ready();
   tg.expand();
 }
 
-// Данные текущего атлета (из Telegram или дефолтные)
 const currentUser = {
   id: tg?.initDataUnsafe?.user?.id || 777,
   name: tg?.initDataUnsafe?.user?.first_name || "Леонид",
@@ -751,7 +765,6 @@ const currentUser = {
   photo: tg?.initDataUnsafe?.user?.photo_url || ""
 };
 
-// ==================== 2. КАТАЛОГ 36 УПРАЖНЕНИЙ ====================
 const EXERCISES = [
   { id:1,  name:"Отведение бедер",                        cat:"Ноги",    tag:"Тренажер", emoji:"🦵", gravit:false },
   { id:2,  name:"Сведение бедер",                         cat:"Ноги",    tag:"Тренажер", emoji:"🦵", gravit:false },
@@ -791,10 +804,9 @@ const EXERCISES = [
   { id:36, name:"Армейский жим сидя",                     cat:"Плечи",   tag:"База",     emoji:"🏋️",  gravit:false }
 ];
 
-// ==================== 3. СОСТОЯНИЕ (LOCALSTORAGE) ====================
 let state = JSON.parse(localStorage.getItem('gym_tg_state') || '{}');
-if (!state.workouts) state.workouts = {}; // { "YYYY-MM-DD": [ {id, exId, weight, reps, oneRm} ] }
-if (!state.selectedExId) state.selectedExId = 25; // По умолчанию: Жим лежа со свободным весом
+if (!state.workouts) state.workouts = {};
+if (!state.selectedExId) state.selectedExId = 25;
 if (!state.statsExId) state.statsExId = 25;
 if (!state.duels) {
   state.duels = [
@@ -819,10 +831,8 @@ function saveState() {
   localStorage.setItem('gym_tg_state', JSON.stringify(state));
 }
 
-// ==================== 4. ФОРМУЛЫ (1RM, ТОННАЖ, СТРИКИ) ====================
-// Формула Эпли: 1RM = Weight * (1 + 0.0333 * Reps)
 function calculate1RM(weight, reps, isGravit) {
-  if (isGravit) return weight; // Для гравитрона 1RM не применяется в лоб
+  if (isGravit) return weight;
   return Math.round(weight * (1 + 0.0333 * reps) * 10) / 10;
 }
 
@@ -834,7 +844,6 @@ function updateLive1RM() {
   document.getElementById('live-1rm').textContent = ex?.gravit ? `${w} кг (противовес)` : `${oneRm} кг`;
 }
 
-// Подсчет тоннажа за последние 7 дней
 function getWeeklyTonnage() {
   let sum = 0;
   const now = new Date();
@@ -848,10 +857,9 @@ function getWeeklyTonnage() {
   return sum;
 }
 
-// Стрик посещений в текущем месяце
 function getMonthlyStreak() {
   const now = new Date();
-  const ym = now.toISOString().slice(0, 7); // "YYYY-MM"
+  const ym = now.toISOString().slice(0, 7);
   let count = 0;
   Object.keys(state.workouts).forEach(dateStr => {
     if (dateStr.startsWith(ym) && state.workouts[dateStr].length > 0) count++;
@@ -859,7 +867,7 @@ function getMonthlyStreak() {
   return count;
 }
 
-// ==================== 5. НАВИГАЦИЯ ====================
+// ==================== 2. НАВИГАЦИЯ ====================
 let currentSelectedDate = new Date().toISOString().split('T')[0];
 let catalogTarget = 'log';
 
@@ -887,7 +895,7 @@ function closeCatalog() {
   document.getElementById('screen-catalog').classList.remove('active');
 }
 
-// ==================== 6. РАБОТА С ЖУРНАЛОМ ====================
+// ==================== 3. ЖУРНАЛ И СЕТЫ ====================
 function stepSet(d) {
   const el = document.getElementById('in-set');
   el.value = Math.max(1, Math.min(20, parseInt(el.value) + d));
@@ -949,7 +957,6 @@ function saveSet() {
     oneRm
   });
 
-  // Автоматический пост в общую ленту соревнований
   state.feed.unshift({
     id: Date.now() + 1,
     user: currentUser.name,
@@ -987,7 +994,7 @@ function renderTodaySets() {
   `).join('');
 }
 
-// ==================== 7. КАТАЛОГ С ПОИСКОМ ====================
+// ==================== 4. КАТАЛОГ ====================
 function renderCatalog() {
   const grid = document.getElementById('catalog-grid');
   const q = (document.getElementById('catalog-search').value || '').toLowerCase().trim();
@@ -1025,16 +1032,13 @@ function selectExerciseFromCatalog(id) {
   closeCatalog();
 }
 
-// ==================== 8. ГРАФИК ПРОГРЕССА И СРАВНЕНИЕ ====================
+// ==================== 5. ГРАФИК ПРОГРЕССА ====================
 let chartInstance = null;
 
 function renderChart() {
-  const ex = EXERCISES.find(e => e.id === state.statsExId);
   const friend = document.getElementById('friend-compare-select').value;
-  
-  // Собираем исторические данные атлета
   const dates = ["01.09", "05.09", "09.09", "13.09", "17.09", "20.09"];
-  const myWeights = [70, 72.5, 75, 75, 77.5, 80]; // Базовая кривая
+  const myWeights = [70, 72.5, 75, 75, 77.5, 80];
 
   const datasets = [{
     label: `${currentUser.name} (Вы)`,
@@ -1091,7 +1095,7 @@ function renderChart() {
   });
 }
 
-// ==================== 9. АРЕНА, ДУЭЛИ И СОРЕВНОВАНИЯ ====================
+// ==================== 6. АРЕНА И ДУЭЛИ ====================
 function updateArenaDashboard() {
   const streak = getMonthlyStreak();
   const tonnage = getWeeklyTonnage();
@@ -1155,17 +1159,16 @@ function createDuel() {
   updateArenaDashboard();
   showToast("Вызов создан!");
 
-  // Инвайт через Telegram Share Link
-  const shareText = encodeURIComponent(`Привет! Я вызываю тебя на фитнес-баттл: «${discipline}» на ${days} дней! Заходи в дневник и покажи свой максимум.`);
+  const shareText = encodeURIComponent(`Привет! Я вызываю тебя на баттл: «${discipline}» на ${days} дней! Заходи в дневник:`);
   tg?.openTelegramLink(`https://t.me/share/url?url=https://t.me/gym_tracker_bot&text=${shareText}`);
 }
 
 function shareInviteLink() {
-  const shareText = encodeURIComponent("Давай тренироваться вместе и соревноваться в силовых показателях в Telegram!");
+  const shareText = encodeURIComponent("Давай тренироваться вместе и соревноваться в силовых показателях!");
   tg?.openTelegramLink(`https://t.me/share/url?url=https://t.me/gym_tracker_bot&text=${shareText}`);
 }
 
-// ==================== 10. ЛЕНТА РЕЗУЛЬТАТОВ ====================
+// ==================== 7. ЛЕНТА ====================
 function renderFeed() {
   const wrap = document.getElementById('feed-container');
   wrap.innerHTML = state.feed.map(item => `
@@ -1196,11 +1199,11 @@ function addReaction(feedId, emoji) {
 }
 
 function shareWorkout() {
-  const shareText = encodeURIComponent(`Сегодня отлично потренил! Мой расчетный 1RM сегодня: 105 кг.`);
+  const shareText = encodeURIComponent(`Сегодня отлично потренил! Мой расчетный 1RM: 105 кг.`);
   tg?.openTelegramLink(`https://t.me/share/url?url=https://t.me/gym_tracker_bot&text=${shareText}`);
 }
 
-// ==================== 11. ПРОГРАММЫ ====================
+// ==================== 8. ПРОГРАММЫ ====================
 function renderTemplates() {
   const wrap = document.getElementById('templates-container');
   wrap.innerHTML = state.templates.map(t => {
@@ -1231,7 +1234,7 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2000);
 }
 
-// ==================== ИНИЦИАЛИЗАЦИЯ ====================
+// ==================== СТАРТ ====================
 function init() {
   document.getElementById('nav-user-name').textContent = currentUser.name;
   if (currentUser.photo) {
