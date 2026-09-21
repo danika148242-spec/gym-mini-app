@@ -133,6 +133,32 @@
   }
   .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
+  /* ПЛАШКА АКТИВНОЙ ПРОГРАММЫ В ЖУРНАЛЕ */
+  .active-program-banner {
+    margin: 6px 16px 10px;
+    padding: 10px 14px;
+    background: var(--accent-light);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .active-program-text {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .btn-reset-program {
+    background: rgba(0, 122, 255, 0.15);
+    border: none;
+    color: var(--accent);
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
   /* TAB BAR (5 Вкладок) */
   .tab-bar {
     display: flex;
@@ -562,6 +588,12 @@
       </div>
 
       <div class="scroll-area">
+        <!-- Плашка активной программы (если выбрана) -->
+        <div id="active-prog-banner" class="active-program-banner" style="display:none;">
+          <div class="active-program-text" id="active-prog-name">Программа: День ног</div>
+          <button class="btn-reset-program" onclick="resetActiveProgram()">✕ Все упр.</button>
+        </div>
+
         <div class="date-scroll-container">
           <div class="date-scroll" id="date-scroll"></div>
           <label class="calendar-trigger-bubble" title="Выбрать любую дату">
@@ -639,6 +671,17 @@
           </div>
         </div>
 
+        <!-- Сравнение с друзьями на графике -->
+        <div class="card" style="padding:12px 16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <span style="font-size:14px; font-weight:700;">Сравнить с другом:</span>
+            <select id="friend-compare-select" onchange="renderChart()" style="background:var(--fill-secondary); border:none; padding:6px 10px; border-radius:10px; font-weight:600;">
+              <option value="none">Только мой прогресс</option>
+            </select>
+          </div>
+          <div style="font-size:11px; color:var(--text-secondary);">Отображаются друзья, с которыми вы взаимно делитесь графиком</div>
+        </div>
+
         <div class="card" style="padding:16px; margin-bottom:12px;">
           <div style="height:230px; position:relative;" id="chart-wrapper">
             <canvas id="progressChart"></canvas>
@@ -647,7 +690,7 @@
       </div>
     </div>
 
-    <!-- ================= TAB 3: АРЕНА (ДРУЗЬЯ И ВЫЗОВЫ) ================= -->
+    <!-- ================= TAB 3: АРЕНА (ДРУЗЬЯ И ЗАЯВКИ) ================= -->
     <div class="screen" id="screen-arena">
       <div class="nav-bar">
         <div class="nav-bar-row">
@@ -684,19 +727,13 @@
           <button class="btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="openAddFriendModal()">+ Заявка</button>
         </div>
         <div class="card" id="friends-list-container">
-          <div style="padding:16px; text-align:center; color:var(--text-secondary); font-size:13px;">У вас пока нет добавленных друзей</div>
-        </div>
-
-        <!-- ИСХОДЯЩИЕ ЗАЯВКИ -->
-        <div id="outgoing-requests-section" style="display:none;">
-          <div class="section-header">Отправленные заявки (ожидают)</div>
-          <div class="card" id="outgoing-requests-list"></div>
+          <div style="padding:16px; text-align:center; color:var(--text-secondary); font-size:13px;">У вас пока нет подтвержденных друзей</div>
         </div>
 
         <!-- ДУЭЛИ -->
         <div class="section-header">Активные дуэли</div>
         <div id="active-duels-container">
-          <div class="card" style="padding:20px; text-align:center; color:var(--text-secondary); font-size:13px;">Нет активных вызовов. Отправьте вызов подтвержденному другу!</div>
+          <div class="card" style="padding:20px; text-align:center; color:var(--text-secondary); font-size:13px;">Нет активных вызовов. Выберите друга и бросьте вызов!</div>
         </div>
       </div>
     </div>
@@ -762,7 +799,7 @@
     <div class="nav-bar">
       <div class="nav-bar-row">
         <button class="btn-secondary" onclick="closeCatalog()">✕ Закрыть</button>
-        <div class="nav-title">Каталог упражнений</div>
+        <div class="nav-title" id="catalog-title">Каталог упражнений</div>
         <div style="width:70px;"></div>
       </div>
     </div>
@@ -776,16 +813,15 @@
     </div>
   </div>
 
-  <!-- ================= МОДАЛКА: ЗАЯВКА В ДРУЗЬЯ ================= -->
+  <!-- ================= МОДАЛКА: ОТПРАВИТЬ ЗАЯВКУ В ДРУЗЬЯ ================= -->
   <div class="modal-overlay" id="modal-friend" onclick="closeModalOnOverlay(event, 'modal-friend')">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
       <div style="padding:0 20px 12px; font-size:18px; font-weight:800;">Отправить заявку в друзья</div>
-      <div class="card" style="padding:14px 16px;">
-        <input type="text" id="friend-name-input" placeholder="Имя друга или @юзернейм" 
-               style="width:100%; border:none; font-size:16px; outline:none; background:transparent;">
+      <div style="padding:0 20px 14px; font-size:13px; color:var(--text-secondary); line-height:1.4;">
+        При нажатии кнопки откроется Telegram — выберите друга, чтобы отправить ему приглашение. При переходе он появится у вас в списке!
       </div>
-      <button class="btn-primary" onclick="sendFriendRequest()">Отправить заявку</button>
+      <button class="btn-primary" onclick="shareFriendRequestLink()">👥 Отправить ссылку-приглашение в Telegram</button>
     </div>
   </div>
 
@@ -817,11 +853,11 @@
           </select>
         </div>
       </div>
-      <button class="btn-primary" onclick="createDuel()">⚔️ Начать баттл</button>
+      <button class="btn-primary" onclick="createDuel()">⚔️ Начать соревнование</button>
     </div>
   </div>
 
-  <!-- ================= МОДАЛКА: НОВЫЙ РЕКОРД (ПОДЕЛИТЬСЯ) ================= -->
+  <!-- ================= МОДАЛКА: НОВЫЙ РЕКОРД ================= -->
   <div class="modal-overlay" id="modal-pr" onclick="closeModalOnOverlay(event, 'modal-pr')">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
@@ -839,7 +875,7 @@
     </div>
   </div>
 
-  <!-- ================= МОДАЛКА: СОЗДАНИЕ ПРОГРАММЫ ================= -->
+  <!-- ================= МОДАЛКА: СОЗДАНИЕ ПРОГРАММЫ С ПОИСКОМ ================= -->
   <div class="modal-overlay" id="modal-template" onclick="closeModalOnOverlay(event, 'modal-template')">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
@@ -848,6 +884,14 @@
         <input type="text" id="tmpl-name-input" placeholder="Название (например: День ног)" 
                style="width:100%; border:none; font-size:16px; outline:none; background:transparent;">
       </div>
+      
+      <!-- Поиск упражнений внутри модалки программы -->
+      <div style="padding:0 16px 8px;">
+        <input type="text" id="tmpl-ex-search" placeholder="🔍 Быстрый поиск упражнения..." 
+               style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--separator); background:var(--fill-secondary); font-size:14px;"
+               oninput="filterTemplateExercises()">
+      </div>
+
       <div class="section-header">Выберите упражнения:</div>
       <div class="card" id="tmpl-ex-picker" style="max-height:35dvh; overflow-y:auto; padding:0 8px;">
       </div>
@@ -859,7 +903,7 @@
 </div>
 
 <script>
-// ==================== 1. ИНИЦИАЛИЗАЦИЯ И ЧИСТОЕ ХРАНИЛИЩЕ ====================
+// ==================== 1. ИНИЦИАЛИЗАЦИЯ ====================
 const tg = window.Telegram?.WebApp;
 if (tg) {
   tg.ready();
@@ -873,7 +917,7 @@ const currentUser = {
   photo: tg?.initDataUnsafe?.user?.photo_url || ""
 };
 
-const STORAGE_KEY = 'gym_v5_user_' + currentUser.id;
+const STORAGE_KEY = 'gym_v6_user_' + currentUser.id;
 
 let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
 if (!state) {
@@ -881,10 +925,10 @@ if (!state) {
     workouts: {},
     selectedExId: 25,
     statsExId: 25,
-    // Друзья имеют статусы: 'accepted', 'outgoing', 'incoming'
-    friends: [],
+    activeTemplateId: null, // Идентификатор активной программы в Журнале
+    friends: [],            // { id, name, shareWithHim: true/false, status: 'accepted'|'incoming' }
     duels: [],
-    feed: [], // Только добровольно опубликованные рекорды
+    feed: [],
     templates: []
   };
 }
@@ -893,7 +937,7 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-// 36 Базовых упражнений
+// 36 упражнений
 const EXERCISES = [
   { id:1,  name:"Отведение бедер",                        cat:"Ноги",    tag:"Тренажер", emoji:"🦵", gravit:false },
   { id:2,  name:"Сведение бедер",                         cat:"Ноги",    tag:"Тренажер", emoji:"🦵", gravit:false },
@@ -933,7 +977,35 @@ const EXERCISES = [
   { id:36, name:"Армейский жим сидя",                     cat:"Плечи",   tag:"База",     emoji:"🏋️",  gravit:false }
 ];
 
-// ==================== 2. МЕТРИКИ И ПРОВЕРКА РЕКОРДА ====================
+// ==================== 2. ОБРАБОТКА ВХОДЯЩИХ ССЫЛОК TELEGRAM ====================
+// Проверка start_param при открытии приложения по ссылке
+function checkIncomingTelegramParams() {
+  const param = tg?.initDataUnsafe?.start_param;
+  if (!param) return;
+
+  // Формат: fr_ID_NAME
+  if (param.startsWith('fr_')) {
+    const parts = param.split('_');
+    const senderId = parts[1];
+    const senderName = decodeURIComponent(parts[2] || 'Друг');
+
+    // Проверяем, нет ли уже такого друга
+    const exists = state.friends.find(f => f.id == senderId);
+    if (!exists && senderId != currentUser.id) {
+      state.friends.push({
+        id: senderId,
+        name: senderName,
+        shareWithHim: true,
+        status: 'incoming'
+      });
+      saveState();
+      switchTab('arena');
+      showToast(`Получена заявка в друзья от ${senderName}!`);
+    }
+  }
+}
+
+// ==================== 3. МЕТРИКИ И РЕКОРДЫ ====================
 function calculate1RM(weight, reps, isGravit) {
   if (isGravit) return weight;
   return Math.round(weight * (1 + 0.0333 * reps) * 10) / 10;
@@ -947,7 +1019,6 @@ function updateLive1RM() {
   document.getElementById('live-1rm').textContent = ex?.gravit ? `${w} кг (противовес)` : `${oneRm} кг`;
 }
 
-// Проверка, является ли подход абсолютным рекордом пользователя по упражнению
 function checkIsRecord(exId, newWeight, isGravit) {
   let prevBest = null;
   Object.values(state.workouts).forEach(sets => {
@@ -962,9 +1033,8 @@ function checkIsRecord(exId, newWeight, isGravit) {
     });
   });
 
-  if (prevBest === null) return true; // Первый результат — уже рекорд
-  if (isGravit) return newWeight < prevBest; // В гравитроне: меньше противовес = лучше
-  return newWeight > prevBest;
+  if (prevBest === null) return true;
+  return isGravit ? (newWeight < prevBest) : (newWeight > prevBest);
 }
 
 function getWeeklyTonnage() {
@@ -1000,10 +1070,10 @@ function getMax1RMAllTime() {
   return max1rm;
 }
 
-// ==================== 3. НАВИГАЦИЯ ====================
+// ==================== 4. НАВИГАЦИЯ ====================
 let currentSelectedDate = new Date().toISOString().split('T')[0];
 let catalogTarget = 'log';
-let pendingPRRecord = null; // Временный рекорд, ожидающий согласия поделиться
+let pendingPRRecord = null;
 
 function switchTab(tabId) {
   tg?.HapticFeedback?.selectionChanged();
@@ -1029,7 +1099,7 @@ function closeCatalog() {
   document.getElementById('screen-catalog').classList.remove('active');
 }
 
-// ==================== 4. ЖУРНАЛ И СОХРАНЕНИЕ ПОДХОДОВ ====================
+// ==================== 5. ЖУРНАЛ И СОХРАНЕНИЕ ПОДХОДОВ ====================
 function stepSet(d) {
   const el = document.getElementById('in-set');
   el.value = Math.max(1, Math.min(20, parseInt(el.value) + d));
@@ -1110,7 +1180,6 @@ function saveSet() {
   const reps = parseInt(document.getElementById('in-reps').value);
   const oneRm = calculate1RM(weight, reps, ex.gravit);
 
-  // Проверяем, рекорд ли это ДО записи нового подхода
   const isNewPR = checkIsRecord(ex.id, weight, ex.gravit);
 
   if (!state.workouts[currentSelectedDate]) state.workouts[currentSelectedDate] = [];
@@ -1132,7 +1201,7 @@ function saveSet() {
   document.getElementById('in-set').value = setNum + 1;
   renderTodaySets();
 
-  // Если зафиксирован новый рекорд — предлагаем поделиться в ленте
+  // Если это рекорд — предлагаем поделиться в ленте
   if (isNewPR) {
     pendingPRRecord = {
       id: Date.now() + 2,
@@ -1190,11 +1259,32 @@ function renderTodaySets() {
   `).join('');
 }
 
-// ==================== 5. КАТАЛОГ ====================
+// ==================== 6. КАТАЛОГ С ФИЛЬТРАЦИЕЙ ПО ПРОГРАММЕ ====================
 function renderCatalog() {
   const grid = document.getElementById('catalog-grid');
   const q = (document.getElementById('catalog-search').value || '').toLowerCase().trim();
-  const list = EXERCISES.filter(e => e.name.toLowerCase().includes(q) || e.cat.toLowerCase().includes(q));
+  
+  let list = EXERCISES;
+
+  // Если открыто из журнала И активна программа — показываем ТОЛЬКО упражнения этой программы!
+  if (catalogTarget === 'log' && state.activeTemplateId) {
+    const tmpl = state.templates.find(t => t.id === state.activeTemplateId);
+    if (tmpl) {
+      list = list.filter(e => tmpl.exIds.includes(e.id));
+      document.getElementById('catalog-title').textContent = `${tmpl.name} (${list.length})`;
+    }
+  } else {
+    document.getElementById('catalog-title').textContent = "Каталог 36 упражнений";
+  }
+
+  if (q) {
+    list = list.filter(e => e.name.toLowerCase().includes(q) || e.cat.toLowerCase().includes(q));
+  }
+
+  if (list.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1; padding:40px; text-align:center; color:var(--text-secondary);">Упражнений не найдено</div>`;
+    return;
+  }
 
   grid.innerHTML = list.map(e => `
     <div class="ex-card" onclick="selectExerciseFromCatalog(${e.id})">
@@ -1228,7 +1318,27 @@ function selectExerciseFromCatalog(id) {
   closeCatalog();
 }
 
-// ==================== 6. ГРАФИК ПРОГРЕССА ====================
+function resetActiveProgram() {
+  state.activeTemplateId = null;
+  saveState();
+  updateActiveProgramBanner();
+  showToast("Отображаются все 36 упражнений");
+}
+
+function updateActiveProgramBanner() {
+  const banner = document.getElementById('active-prog-banner');
+  if (state.activeTemplateId) {
+    const tmpl = state.templates.find(t => t.id === state.activeTemplateId);
+    if (tmpl) {
+      banner.style.display = 'flex';
+      document.getElementById('active-prog-name').textContent = `Программа: ${tmpl.name}`;
+      return;
+    }
+  }
+  banner.style.display = 'none';
+}
+
+// ==================== 7. ГРАФИК ПРОГРЕССА И СРАВНЕНИЕ ====================
 let chartInstance = null;
 
 function renderChart() {
@@ -1282,7 +1392,7 @@ function renderChart() {
   });
 }
 
-// ==================== 7. АРЕНА, ЗАЯВКИ В ДРУЗЬЯ И ДУЭЛИ ====================
+// ==================== 8. АРЕНА, ДРУЗЬЯ И ТУМБЛЕРЫ ПРИВАТНОСТИ ====================
 function updateArenaDashboard() {
   const streak = getMonthlyStreak();
   const tonnage = getWeeklyTonnage();
@@ -1292,10 +1402,8 @@ function updateArenaDashboard() {
   document.getElementById('stat-tonnage').textContent = tonnage > 1000 ? `${(tonnage/1000).toFixed(1)} т` : `${tonnage} кг`;
   document.getElementById('stat-top1rm').textContent = `${top1rm} кг`;
 
-  // Фильтрация друзей по статусам
   const acceptedFriends = state.friends.filter(f => f.status === 'accepted');
   const incomingReqs = state.friends.filter(f => f.status === 'incoming');
-  const outgoingReqs = state.friends.filter(f => f.status === 'outgoing');
 
   // Входящие заявки
   const inSection = document.getElementById('incoming-requests-section');
@@ -1306,8 +1414,8 @@ function updateArenaDashboard() {
       <div class="card-row">
         <span style="font-weight:700;">${f.name}</span>
         <div style="display:flex; gap:6px;">
-          <button class="btn-sm-action btn-accept" onclick="acceptFriendRequest(${f.id})">Принять ✓</button>
-          <button class="btn-sm-action btn-reject" onclick="rejectFriendRequest(${f.id})">✕</button>
+          <button class="btn-sm-action btn-accept" onclick="acceptFriendRequest('${f.id}')">Принять ✓</button>
+          <button class="btn-sm-action btn-reject" onclick="rejectFriendRequest('${f.id}')">✕</button>
         </div>
       </div>
     `).join('');
@@ -1315,44 +1423,33 @@ function updateArenaDashboard() {
     inSection.style.display = 'none';
   }
 
-  // Список подтвержденных друзей
+  // Список подтвержденных друзей с тумблером приватности
   const fContainer = document.getElementById('friends-list-container');
   if (acceptedFriends.length === 0) {
     fContainer.innerHTML = `<div style="padding:16px; text-align:center; color:var(--text-secondary); font-size:13px;">У вас пока нет подтвержденных друзей</div>`;
   } else {
     fContainer.innerHTML = acceptedFriends.map(f => `
-      <div class="card-row">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <div class="user-avatar" style="width:28px; height:28px; font-size:11px;">${f.name[0].toUpperCase()}</div>
-          <span style="font-weight:700; font-size:14px;">${f.name}</span>
+      <div class="card-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="user-avatar" style="width:28px; height:28px; font-size:11px;">${f.name[0].toUpperCase()}</div>
+            <span style="font-weight:700; font-size:14px;">${f.name}</span>
+          </div>
+          <button class="btn-danger-sm" onclick="removeFriend('${f.id}')">✕</button>
         </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <button class="btn-secondary" style="padding:4px 8px; font-size:11px;" onclick="openNewDuelModalForFriend('${f.name}')">Вызов ⚔️</button>
-          <button class="btn-danger-sm" onclick="removeFriend(${f.id})">✕</button>
+        <!-- Тумблер: делиться ли показателями с этим другом -->
+        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--fill-secondary); padding:6px 10px; border-radius:10px;">
+          <span style="font-size:12px; color:var(--text-secondary); font-weight:500;">Делиться графиком на Арене:</span>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" ${f.shareWithHim ? 'checked' : ''} onchange="toggleFriendShare('${f.id}', this.checked)" style="width:16px; height:16px; accent-color:var(--accent);">
+            <span style="font-size:12px; font-weight:700;">${f.shareWithHim ? 'Да' : 'Нет'}</span>
+          </label>
         </div>
       </div>
     `).join('');
   }
 
-  // Исходящие заявки
-  const outSection = document.getElementById('outgoing-requests-section');
-  const outList = document.getElementById('outgoing-requests-list');
-  if (outgoingReqs.length > 0) {
-    outSection.style.display = 'block';
-    outList.innerHTML = outgoingReqs.map(f => `
-      <div class="card-row">
-        <span style="font-weight:600; color:var(--text-secondary);">${f.name}</span>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:11px; color:var(--text-secondary);">Ожидает подтверждения</span>
-          <button class="btn-danger-sm" onclick="removeFriend(${f.id})">✕</button>
-        </div>
-      </div>
-    `).join('');
-  } else {
-    outSection.style.display = 'none';
-  }
-
-  // Селект в модалке вызова (только принятые друзья!)
+  // Выбор соперника для вызова
   const duelSelect = document.getElementById('duel-friend-select');
   if (acceptedFriends.length > 0) {
     duelSelect.innerHTML = acceptedFriends.map(f => `<option value="${f.name}">${f.name}</option>`).join('');
@@ -1360,7 +1457,17 @@ function updateArenaDashboard() {
     duelSelect.innerHTML = `<option value="">Сначала добавьте друга</option>`;
   }
 
-  // Список активных дуэлей
+  // Обновление селекта друзей на экране прогресса
+  const compareSelect = document.getElementById('friend-compare-select');
+  const sharedFriends = acceptedFriends.filter(f => f.shareWithHim);
+  if (sharedFriends.length > 0) {
+    compareSelect.innerHTML = `<option value="none">Только мой прогресс</option>` + 
+      sharedFriends.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+  } else {
+    compareSelect.innerHTML = `<option value="none">Только мой прогресс</option>`;
+  }
+
+  // Дуэли
   const dContainer = document.getElementById('active-duels-container');
   if (!state.duels || state.duels.length === 0) {
     dContainer.innerHTML = `<div class="card" style="padding:20px; text-align:center; color:var(--text-secondary); font-size:13px;">Нет активных вызовов. Выберите друга и бросьте вызов!</div>`;
@@ -1391,46 +1498,50 @@ function updateArenaDashboard() {
 }
 
 function openAddFriendModal() {
-  document.getElementById('friend-name-input').value = '';
   document.getElementById('modal-friend').classList.add('visible');
 }
 
-function sendFriendRequest() {
-  const name = document.getElementById('friend-name-input').value.trim();
-  if (!name) { showToast("Введите имя друга"); return; }
-  
-  // Добавляем как исходящую заявку (outgoing)
-  state.friends.push({
-    id: Date.now(),
-    name,
-    status: 'outgoing'
-  });
-
-  saveState();
+// Отправка ссылки на добавление через Telegram
+function shareFriendRequestLink() {
   document.getElementById('modal-friend').classList.remove('visible');
-  updateArenaDashboard();
-  showToast(`Заявка отправлена пользователю ${name}!`);
+  const safeName = encodeURIComponent(currentUser.name);
+  const botUser = "my_gym_tracker_bot"; // Юзернейм вашего бота
+  const inviteLink = `https://t.me/${botUser}?startapp=fr_${currentUser.id}_${safeName}`;
+  const shareText = encodeURIComponent(`Привет! Добавляйся ко мне в друзья в приложении Дневника тренировок:`);
+  
+  tg?.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${shareText}`);
 }
 
-function acceptFriendRequest(friendId) {
-  const friend = state.friends.find(f => f.id === friendId);
-  if (friend) {
-    friend.status = 'accepted';
+function acceptFriendRequest(senderId) {
+  const f = state.friends.find(x => x.id == senderId);
+  if (f) {
+    f.status = 'accepted';
+    f.shareWithHim = true;
     saveState();
     updateArenaDashboard();
-    showToast(`Вы приняли заявку от ${friend.name}! Теперь можно соревноваться.`);
+    showToast(`Вы приняли заявку от ${f.name}!`);
   }
 }
 
-function rejectFriendRequest(friendId) {
-  state.friends = state.friends.filter(f => f.id !== friendId);
+function rejectFriendRequest(senderId) {
+  state.friends = state.friends.filter(x => x.id != senderId);
   saveState();
   updateArenaDashboard();
   showToast("Заявка отклонена");
 }
 
+function toggleFriendShare(friendId, isChecked) {
+  const f = state.friends.find(x => x.id == friendId);
+  if (f) {
+    f.shareWithHim = isChecked;
+    saveState();
+    updateArenaDashboard();
+    showToast(isChecked ? `Доступ к графику открыт для ${f.name}` : `Доступ к графику закрыт для ${f.name}`);
+  }
+}
+
 function removeFriend(friendId) {
-  state.friends = state.friends.filter(f => f.id !== friendId);
+  state.friends = state.friends.filter(x => x.id != friendId);
   saveState();
   updateArenaDashboard();
 }
@@ -1438,15 +1549,10 @@ function removeFriend(friendId) {
 function openNewDuelModal() {
   const acceptedFriends = state.friends.filter(f => f.status === 'accepted');
   if (acceptedFriends.length === 0) {
-    showToast("Для вызова нужен хотя бы один принятый друг");
+    showToast("Сначала отправьте заявку и добавьте хотя бы одного друга");
     openAddFriendModal();
     return;
   }
-  document.getElementById('modal-duel').classList.add('visible');
-}
-
-function openNewDuelModalForFriend(friendName) {
-  document.getElementById('duel-friend-select').value = friendName;
   document.getElementById('modal-duel').classList.add('visible');
 }
 
@@ -1475,13 +1581,13 @@ function removeDuel(idx) {
   updateArenaDashboard();
 }
 
-// ==================== 8. ЛЕНТА РЕКОРДОВ ====================
+// ==================== 9. ЛЕНТА ====================
 function renderFeed() {
   const wrap = document.getElementById('feed-container');
   if (!state.feed || state.feed.length === 0) {
     wrap.innerHTML = `
       <div class="card" style="padding:32px 16px; text-align:center; color:var(--text-secondary); font-size:14px;">
-        В ленте пока пусто.<br>Когда вы или ваши друзья побьете личный рекорд и решите им поделиться, он появится здесь!
+        В ленте пока пусто.<br>Когда вы побьете свой личный рекорд и подтвердите публикацию, он появится здесь!
       </div>
     `;
     return;
@@ -1518,23 +1624,26 @@ function addReaction(feedId, emoji) {
   }
 }
 
-// ==================== 9. ПРОГРАММЫ ====================
+// ==================== 10. ПРОГРАММЫ (С ПОИСКОМ И УДАЛЕНИЕМ) ====================
 function renderTemplates() {
   const wrap = document.getElementById('templates-container');
   if (!state.templates || state.templates.length === 0) {
-    wrap.innerHTML = `<div class="card" style="padding:28px 16px; text-align:center; color:var(--text-secondary); font-size:14px;">У вас пока нет сохраненных программ.<br>Нажмите «+ Создать», чтобы собрать свой тренировочный день!</div>`;
+    wrap.innerHTML = `<div class="card" style="padding:28px 16px; text-align:center; color:var(--text-secondary); font-size:14px;">У вас пока нет сохраненных программ.<br>Нажмите «+ Создать», чтобы собрать тренировочный день!</div>`;
     return;
   }
   wrap.innerHTML = state.templates.map((t, idx) => {
     const exList = t.exIds.map(id => EXERCISES.find(e => e.id === id)?.name).filter(Boolean).join(', ');
+    const isCurrentActive = state.activeTemplateId === t.id;
     return `
       <div class="card" style="padding:14px 16px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div style="font-weight:700; font-size:16px;">${t.name}</div>
+          <div style="font-weight:700; font-size:16px;">${t.name} ${isCurrentActive ? '<span style="color:var(--accent); font-size:12px;">(Активна)</span>' : ''}</div>
           <button class="btn-danger-sm" onclick="deleteTemplate(${idx})" title="Удалить программу">✕</button>
         </div>
         <div style="font-size:12px; color:var(--text-secondary); margin-top:4px; line-height:1.4;">${exList}</div>
-        <button class="btn-secondary" style="margin-top:10px; width:100%;" onclick="applyTemplate(${t.id})">Выбрать для тренировки</button>
+        <button class="btn-secondary" style="margin-top:10px; width:100%;" onclick="applyTemplate(${t.id})">
+          ${isCurrentActive ? '✓ Активна в журнале' : 'Выбрать для тренировки'}
+        </button>
       </div>
     `;
   }).join('');
@@ -1542,21 +1651,32 @@ function renderTemplates() {
 
 function openNewTemplateModal() {
   document.getElementById('tmpl-name-input').value = '';
+  document.getElementById('tmpl-ex-search').value = '';
+  renderTemplateExCheckboxes(EXERCISES);
+  document.getElementById('modal-template').classList.add('visible');
+}
+
+function renderTemplateExCheckboxes(exercisesList) {
   const picker = document.getElementById('tmpl-ex-picker');
-  picker.innerHTML = EXERCISES.map(e => `
+  picker.innerHTML = exercisesList.map(e => `
     <label style="display:flex; align-items:center; gap:10px; padding:10px 8px; border-bottom:0.5px solid var(--separator); cursor:pointer;">
-      <input type="checkbox" value="${e.id}" style="width:18px; height:18px; accent-color:var(--accent);">
+      <input type="checkbox" value="${e.id}" class="tmpl-ex-cb" style="width:18px; height:18px; accent-color:var(--accent);">
       <span style="font-size:14px; font-weight:600;">${e.name}</span>
     </label>
   `).join('');
-  document.getElementById('modal-template').classList.add('visible');
+}
+
+function filterTemplateExercises() {
+  const q = (document.getElementById('tmpl-ex-search').value || '').toLowerCase().trim();
+  const filtered = EXERCISES.filter(e => e.name.toLowerCase().includes(q) || e.cat.toLowerCase().includes(q));
+  renderTemplateExCheckboxes(filtered);
 }
 
 function saveNewTemplate() {
   const name = document.getElementById('tmpl-name-input').value.trim();
   if (!name) { showToast("Введите название программы"); return; }
   
-  const checkedBoxes = document.querySelectorAll('#tmpl-ex-picker input[type="checkbox"]:checked');
+  const checkedBoxes = document.querySelectorAll('.tmpl-ex-cb:checked');
   const exIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
 
   if (exIds.length === 0) { showToast("Выберите хотя бы одно упражнение"); return; }
@@ -1574,19 +1694,27 @@ function saveNewTemplate() {
 }
 
 function deleteTemplate(idx) {
+  if (state.templates[idx].id === state.activeTemplateId) {
+    state.activeTemplateId = null;
+  }
   state.templates.splice(idx, 1);
   saveState();
   renderTemplates();
+  updateActiveProgramBanner();
   showToast("Программа удалена");
 }
 
 function applyTemplate(id) {
+  state.activeTemplateId = id;
+  saveState();
+  
   const t = state.templates.find(x => x.id === id);
   if (t && t.exIds.length > 0) {
     selectExerciseFromCatalog(t.exIds[0]);
-    switchTab('log');
-    showToast(`Программа «${t.name}» загружена в Журнал`);
   }
+  updateActiveProgramBanner();
+  switchTab('log');
+  showToast(`Программа «${t.name}» загружена в Журнал`);
 }
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ====================
@@ -1612,8 +1740,10 @@ function init() {
     document.getElementById('nav-user-avatar').textContent = currentUser.name[0].toUpperCase();
   }
 
+  checkIncomingTelegramParams();
   buildDateBar();
   updateHeaderDateDisplay();
+  updateActiveProgramBanner();
   selectExerciseFromCatalog(state.selectedExId);
   renderTodaySets();
   updateArenaDashboard();
