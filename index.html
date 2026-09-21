@@ -588,7 +588,6 @@
       </div>
 
       <div class="scroll-area">
-        <!-- Плашка активной программы (если выбрана) -->
         <div id="active-prog-banner" class="active-program-banner" style="display:none;">
           <div class="active-program-text" id="active-prog-name">Программа: День ног</div>
           <button class="btn-reset-program" onclick="resetActiveProgram()">✕ Все упр.</button>
@@ -671,7 +670,6 @@
           </div>
         </div>
 
-        <!-- Сравнение с друзьями на графике -->
         <div class="card" style="padding:12px 16px;">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
             <span style="font-size:14px; font-weight:700;">Сравнить с другом:</span>
@@ -690,7 +688,7 @@
       </div>
     </div>
 
-    <!-- ================= TAB 3: АРЕНА (ДРУЗЬЯ И ЗАЯВКИ) ================= -->
+    <!-- ================= TAB 3: АРЕНА ================= -->
     <div class="screen" id="screen-arena">
       <div class="nav-bar">
         <div class="nav-bar-row">
@@ -715,13 +713,13 @@
           </div>
         </div>
 
-        <!-- ВХОДЯЩИЕ ЗАЯВКИ В ДРУЗЬЯ -->
+        <!-- Входящие заявки -->
         <div id="incoming-requests-section" style="display:none;">
           <div class="section-header" style="color:var(--accent);">Входящие заявки в друзья</div>
           <div class="card" id="incoming-requests-list"></div>
         </div>
 
-        <!-- ДРУЗЬЯ -->
+        <!-- Друзья -->
         <div class="section-header">
           <span>Мои друзья</span>
           <button class="btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="openAddFriendModal()">+ Заявка</button>
@@ -730,7 +728,7 @@
           <div style="padding:16px; text-align:center; color:var(--text-secondary); font-size:13px;">У вас пока нет подтвержденных друзей</div>
         </div>
 
-        <!-- ДУЭЛИ -->
+        <!-- Дуэли -->
         <div class="section-header">Активные дуэли</div>
         <div id="active-duels-container">
           <div class="card" style="padding:20px; text-align:center; color:var(--text-secondary); font-size:13px;">Нет активных вызовов. Выберите друга и бросьте вызов!</div>
@@ -768,9 +766,9 @@
       </div>
     </div>
 
-  </div> <!-- /screens-viewport -->
+  </div>
 
-  <!-- ================= TAB BAR (5 КНОПОК) ================= -->
+  <!-- ================= TAB BAR ================= -->
   <div class="tab-bar">
     <button class="tab-item active" onclick="switchTab('log')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -813,13 +811,13 @@
     </div>
   </div>
 
-  <!-- ================= МОДАЛКА: ОТПРАВИТЬ ЗАЯВКУ В ДРУЗЬЯ ================= -->
+  <!-- ================= МОДАЛКА: ОТПРАВИТЬ ЗАЯВКУ ================= -->
   <div class="modal-overlay" id="modal-friend" onclick="closeModalOnOverlay(event, 'modal-friend')">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
       <div style="padding:0 20px 12px; font-size:18px; font-weight:800;">Отправить заявку в друзья</div>
       <div style="padding:0 20px 14px; font-size:13px; color:var(--text-secondary); line-height:1.4;">
-        При нажатии кнопки откроется выбор чата Telegram — отправьте ссылку другу, чтобы он появился у вас в списке!
+        При нажатии откроется диалог в Telegram — отправьте ссылку другу, чтобы он появился у вас в списке!
       </div>
       <button class="btn-primary" onclick="shareFriendRequestLink()">👥 Отправить заявку в Telegram</button>
     </div>
@@ -875,7 +873,7 @@
     </div>
   </div>
 
-  <!-- ================= МОДАЛКА: СОЗДАНИЕ ПРОГРАММЫ С ПОИСКОМ ================= -->
+  <!-- ================= МОДАЛКА: СОЗДАНИЕ ПРОГРАММЫ ================= -->
   <div class="modal-overlay" id="modal-template" onclick="closeModalOnOverlay(event, 'modal-template')">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
@@ -885,7 +883,6 @@
                style="width:100%; border:none; font-size:16px; outline:none; background:transparent;">
       </div>
       
-      <!-- Поиск упражнений внутри модалки программы -->
       <div style="padding:0 16px 8px;">
         <input type="text" id="tmpl-ex-search" placeholder="🔍 Быстрый поиск упражнения..." 
                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--separator); background:var(--fill-secondary); font-size:14px;"
@@ -904,6 +901,8 @@
 
 <script>
 // ==================== 1. ИНИЦИАЛИЗАЦИЯ ====================
+const BOT_USERNAME = "gymtracker148bot";
+
 const tg = window.Telegram?.WebApp;
 if (tg) {
   tg.ready();
@@ -917,7 +916,7 @@ const currentUser = {
   photo: tg?.initDataUnsafe?.user?.photo_url || ""
 };
 
-const STORAGE_KEY = 'gym_v6_user_' + currentUser.id;
+const STORAGE_KEY = 'gym_v7_user_' + currentUser.id;
 
 let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
 if (!state) {
@@ -937,7 +936,6 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-// 36 Базовых упражнений
 const EXERCISES = [
   { id:1,  name:"Отведение бедер",                        cat:"Ноги",    tag:"Тренажер", emoji:"🦵", gravit:false },
   { id:2,  name:"Сведение бедер",                         cat:"Ноги",    tag:"Тренажер", emoji:"🦵", gravit:false },
@@ -981,52 +979,39 @@ const EXERCISES = [
 function checkIncomingTelegramParams() {
   const urlParams = new URLSearchParams(window.location.search);
 
-  // Сохраняем имя бота для ссылок
-  const botParam = urlParams.get('bot');
-  if (botParam) {
-    localStorage.setItem('gym_bot_username', botParam);
-  }
-
-  // 1. Проверка через стандартные GET параметры URL
-  const senderId = urlParams.get('fr_id');
+  let senderId = urlParams.get('fr_id');
   let senderName = urlParams.get('fr_name');
 
-  // 2. Проверка через нативный Telegram start_param (startapp)
   const tgParam = tg?.initDataUnsafe?.start_param;
-  let finalSenderId = senderId;
-  let finalSenderName = senderName;
-
-  if (!finalSenderId && tgParam && tgParam.startsWith('fr_')) {
+  if (!senderId && tgParam && tgParam.startsWith('fr_')) {
     const parts = tgParam.split('_');
-    finalSenderId = parts[1];
-    finalSenderName = decodeURIComponent(parts[2] || 'Друг');
+    senderId = parts[1];
+    senderName = decodeURIComponent(parts[2] || 'Друг');
   }
 
-  if (finalSenderId && finalSenderId != currentUser.id) {
-    finalSenderName = decodeURIComponent(finalSenderName || 'Друг');
-    const exists = state.friends.find(f => f.id == finalSenderId);
+  if (senderId && senderId != currentUser.id) {
+    senderName = decodeURIComponent(senderName || 'Друг');
+    const exists = state.friends.find(f => f.id == senderId);
 
     if (!exists) {
       state.friends.push({
-        id: finalSenderId,
-        name: finalSenderName,
+        id: senderId,
+        name: senderName,
         shareWithHim: true,
         status: 'incoming'
       });
       saveState();
       switchTab('arena');
-      showToast(`Получена заявка в друзья от ${finalSenderName}!`);
+      showToast(`Получена заявка в друзья от ${senderName}!`);
     }
   }
 }
 
-// Отправка заявки другу через Telegram
+// Отправка ссылки с реальным юзернеймом gymtracker148bot
 function shareFriendRequestLink() {
   document.getElementById('modal-friend').classList.remove('visible');
-  const botName = localStorage.getItem('gym_bot_username') || 'my_gym_tracker_bot';
   const safeName = encodeURIComponent(currentUser.name);
-  // Используем прямую реферальную ссылку
-  const inviteLink = `https://t.me/${botName}?start=${currentUser.id}`;
+  const inviteLink = `https://t.me/${BOT_USERNAME}?start=${currentUser.id}`;
   const shareText = encodeURIComponent(`Привет! Добавляйся ко мне в друзья в дневнике тренировок:`);
 
   tg?.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${shareText}`);
@@ -1126,7 +1111,7 @@ function closeCatalog() {
   document.getElementById('screen-catalog').classList.remove('active');
 }
 
-// ==================== 5. ЖУРНАЛ И СОХРАНЕНИЕ ПОДХОДОВ ====================
+// ==================== 5. ЖУРНАЛ И ПОДХОДЫ ====================
 function stepSet(d) {
   const el = document.getElementById('in-set');
   el.value = Math.max(1, Math.min(20, parseInt(el.value) + d));
@@ -1285,14 +1270,13 @@ function renderTodaySets() {
   `).join('');
 }
 
-// ==================== 6. КАТАЛОГ С ФИЛЬТРАЦИЕЙ ПО ПРОГРАММЕ ====================
+// ==================== 6. КАТАЛОГ ====================
 function renderCatalog() {
   const grid = document.getElementById('catalog-grid');
   const q = (document.getElementById('catalog-search').value || '').toLowerCase().trim();
   
   let list = EXERCISES;
 
-  // Если открыто из журнала И активна программа — показываем ТОЛЬКО упражнения этой программы!
   if (catalogTarget === 'log' && state.activeTemplateId) {
     const tmpl = state.templates.find(t => t.id === state.activeTemplateId);
     if (tmpl) {
@@ -1364,7 +1348,7 @@ function updateActiveProgramBanner() {
   banner.style.display = 'none';
 }
 
-// ==================== 7. ГРАФИК ПРОГРЕССА И СРАВНЕНИЕ ====================
+// ==================== 7. ГРАФИК ПРОГРЕССА ====================
 let chartInstance = null;
 
 function renderChart() {
@@ -1418,7 +1402,7 @@ function renderChart() {
   });
 }
 
-// ==================== 8. АРЕНА, ДРУЗЬЯ И ТУМБЛЕРЫ ПРИВАТНОСТИ ====================
+// ==================== 8. АРЕНА, ДРУЗЬЯ И ТУМБЛЕРЫ ====================
 function updateArenaDashboard() {
   const streak = getMonthlyStreak();
   const tonnage = getWeeklyTonnage();
@@ -1449,7 +1433,7 @@ function updateArenaDashboard() {
     inSection.style.display = 'none';
   }
 
-  // Список подтвержденных друзей с тумблером приватности
+  // Список подтвержденных друзей
   const fContainer = document.getElementById('friends-list-container');
   if (acceptedFriends.length === 0) {
     fContainer.innerHTML = `<div style="padding:16px; text-align:center; color:var(--text-secondary); font-size:13px;">У вас пока нет подтвержденных друзей</div>`;
@@ -1463,7 +1447,6 @@ function updateArenaDashboard() {
           </div>
           <button class="btn-danger-sm" onclick="removeFriend('${f.id}')">✕</button>
         </div>
-        <!-- Тумблер: делиться ли показателями с этим другом -->
         <div style="display:flex; justify-content:space-between; align-items:center; background:var(--fill-secondary); padding:6px 10px; border-radius:10px;">
           <span style="font-size:12px; color:var(--text-secondary); font-weight:500;">Делиться графиком на Арене:</span>
           <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
@@ -1475,7 +1458,6 @@ function updateArenaDashboard() {
     `).join('');
   }
 
-  // Выбор соперника для вызова
   const duelSelect = document.getElementById('duel-friend-select');
   if (acceptedFriends.length > 0) {
     duelSelect.innerHTML = acceptedFriends.map(f => `<option value="${f.name}">${f.name}</option>`).join('');
@@ -1483,7 +1465,6 @@ function updateArenaDashboard() {
     duelSelect.innerHTML = `<option value="">Сначала добавьте друга</option>`;
   }
 
-  // Обновление селекта друзей на экране прогресса
   const compareSelect = document.getElementById('friend-compare-select');
   const sharedFriends = acceptedFriends.filter(f => f.shareWithHim);
   if (sharedFriends.length > 0) {
@@ -1493,7 +1474,6 @@ function updateArenaDashboard() {
     compareSelect.innerHTML = `<option value="none">Только мой прогресс</option>`;
   }
 
-  // Дуэли
   const dContainer = document.getElementById('active-duels-container');
   if (!state.duels || state.duels.length === 0) {
     dContainer.innerHTML = `<div class="card" style="padding:20px; text-align:center; color:var(--text-secondary); font-size:13px;">Нет активных вызовов. Выберите друга и бросьте вызов!</div>`;
@@ -1551,7 +1531,7 @@ function toggleFriendShare(friendId, isChecked) {
     f.shareWithHim = isChecked;
     saveState();
     updateArenaDashboard();
-    showToast(isChecked ? `Доступ к графику открыт для ${f.name}` : `Доступ к графику закрыт для ${f.name}`);
+    showToast(isChecked ? `Доступ открыт для ${f.name}` : `Доступ закрыт для ${f.name}`);
   }
 }
 
@@ -1564,7 +1544,7 @@ function removeFriend(friendId) {
 function openNewDuelModal() {
   const acceptedFriends = state.friends.filter(f => f.status === 'accepted');
   if (acceptedFriends.length === 0) {
-    showToast("Сначала отправьте заявку и добавьте хотя бы одного друга");
+    showToast("Сначала добавьте хотя бы одного друга");
     openAddFriendModal();
     return;
   }
@@ -1639,7 +1619,7 @@ function addReaction(feedId, emoji) {
   }
 }
 
-// ==================== 10. ПРОГРАММЫ (С ПОИСКОМ И УДАЛЕНИЕМ) ====================
+// ==================== 10. ПРОГРАММЫ ====================
 function renderTemplates() {
   const wrap = document.getElementById('templates-container');
   if (!state.templates || state.templates.length === 0) {
