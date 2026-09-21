@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>Gym Duel & Tracker</title>
+<!-- Telegram Web App SDK -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Chart.js для графиков прогресса -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #F2F2F7;
+    --card: #FFFFFF;
+    --accent: #007AFF;
+    --accent-light: #E8F1FF;
+    --danger: #FF3B30;
+    --success: #34C759;
+    --warning: #FF9500;
+    --text-primary: #1C1C1E;
+    --text-secondary: #8E8E93;
+    --text-tertiary: #C7C7CC;
+    --separator: #E5E5EA;
+    --fill-secondary: #E5E5EA;
+    --fill-tertiary: #EFEFF4;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
+    --r: 20px;
+    --r-sm: 14px;
+    --r-xs: 8px;
+    font-family: -apple-system, 'SF Pro Display', 'SF Pro Text', BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  #app {
+    max-width: 480px;
+    margin: 0 auto;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+    transform: translateX(100%);
+    background: var(--bg);
+  }
+  .screen.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(0);
+    z-index: 10;
+  }
+
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: 24px;
+  }
+  .scroll-area::-webkit-scrollbar { display: none; }
+
+  /* NAVIGATION BAR */
+  .nav-bar {
+    padding: 12px 18px 10px;
+    padding-top: max(12px, env(safe-area-inset-top));
+    background: rgba(242,242,247,0.94);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 0.5px solid var(--separator);
+    flex-shrink: 0;
+    z-index: 20;
+  }
+  .nav-bar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 40px;
+  }
+  .nav-title {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    color: var(--text-primary);
+  }
+  .nav-profile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #007AFF20;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    overflow: hidden;
+  }
+  .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* TAB BAR */
+  .tab-bar {
+    display: flex;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 0.5px solid var(--separator);
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    flex-shrink: 0;
+  }
+  .tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 2px 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .tab-item.active { color: var(--accent); }
+  .tab-item svg { width: 22px; height: 22px; }
+
+  /* HEADERS & CARDS */
+  .section-header {
+    padding: 16px 18px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .card {
+    background: var(--card);
+    border-radius: var(--r);
+    box-shadow: var(--shadow-sm);
+    margin: 0 16px 12px;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.03);
+  }
+  .card-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 0.5px solid var(--separator);
+  }
+  .card-row:last-child { border-bottom: none; }
+
+  /* BUTTONS & CONTROLS */
+  .btn-primary {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 4px 16px 12px;
+    padding: 15px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    text-align: center;
+    box-shadow: 0 4px 14px rgba(0,122,255,0.25);
+  }
+  .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+
+  .btn-secondary {
+    padding: 8px 14px;
+    background: var(--fill-secondary);
+    color: var(--text-primary);
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+  }
+
+  .stepper {
+    display: flex;
+    align-items: center;
+    background: var(--fill-secondary);
+    border-radius: var(--r-sm);
+  }
+  .stepper-btn {
+    width: 38px;
+    height: 38px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--accent);
+    cursor: pointer;
+  }
+  .stepper-val {
+    width: 58px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+  }
+
+  /* EXERCISE PREVIEW (APPLE CARD) */
+  .ex-preview {
+    background: var(--card);
+    border-radius: var(--r);
+    padding: 12px 16px;
+    margin: 0 16px 12px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+  }
+  .ex-preview-img {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    background: var(--fill-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    flex-shrink: 0;
+  }
+
+  /* FULLSCREEN CATALOG */
+  .exercise-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 6px 16px 24px;
+  }
+  .ex-card {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 10px;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+  }
+  .ex-card-box {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 16px;
+    background: var(--fill-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 44px;
+    overflow: hidden;
+  }
+  .ex-card-badge {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(6px);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 12px;
+    color: #1C1C1E;
+  }
+  .ex-card-name {
+    font-size: 13px;
+    font-weight: 700;
+    margin-top: 8px;
+    line-height: 1.25;
+    height: 33px;
+    overflow: hidden;
+  }
+  .ex-card-cat {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  /* ARENA / COMPETITION CARDS */
+  .stat-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    padding: 0 16px 12px;
+  }
+  .stat-mini-box {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 12px 10px;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+  }
+  .stat-mini-val { font-size: 18px; font-weight: 800; color: var(--accent); }
+  .stat-mini-lbl { font-size: 11px; color: var(--text-secondary); margin-top: 2px; font-weight: 600; }
+
+  .duel-card {
+    background: var(--card);
+    border-radius: var(--r);
+    padding: 16px;
+    margin: 0 16px 12px;
+    box-shadow: var(--shadow-sm);
+  }
+  .duel-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+  }
+  .duel-fighters {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .fighter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 80px;
+  }
+  .fighter-name { font-size: 12px; font-weight: 700; }
+  .fighter-score { font-size: 16px; font-weight: 800; color: var(--accent); }
+  .duel-progress-wrap {
+    height: 8px;
+    border-radius: 4px;
+    background: #E5E5EA;
+    display: flex;
+    overflow: hidden;
+  }
+  .duel-bar-user { background: var(--accent); height: 100%; transition: width 0.3s; }
+  .duel-bar-friend { background: var(--warning); height: 100%; transition: width 0.3s; }
+
+  /* ACTIVITY FEED */
+  .feed-item {
+    background: var(--card);
+    border-radius: var(--r);
+    padding: 14px 16px;
+    margin: 0 16px 10px;
+    box-shadow: var(--shadow-sm);
+  }
+  .feed-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .feed-user { font-size: 14px; font-weight: 700; }
+  .feed-time { font-size: 11px; color: var(--text-secondary); margin-left: auto; }
+  .feed-text { font-size: 14px; line-height: 1.35; color: var(--text-primary); margin-bottom: 10px; }
+  .feed-highlight { color: var(--accent); font-weight: 700; }
+  .feed-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .reaction-btn {
+    background: var(--fill-secondary);
+    border: none;
+    border-radius: 16px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: transform 0.1s;
+  }
+  .reaction-btn.active {
+    background: #007AFF18;
+    border: 1px solid var(--accent);
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.visible { opacity: 1; pointer-events: all; }
+  .modal-sheet {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--card);
+    border-radius: 24px 24px 0 0;
+    padding: 16px 0 max(20px, env(safe-area-inset-bottom));
+    transform: translateY(100%);
+    transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+    max-height: 85dvh;
+    overflow-y: auto;
+  }
+  .modal-overlay.visible .modal-sheet { transform: translateY(0); }
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: var(--separator);
+    border-radius: 2px;
+    margin: 0 auto 12px;
+  }
+
+  .date-scroll {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .date-scroll::-webkit-scrollbar { display: none; }
+  .date-bubble {
+    flex-shrink: 0;
+    width: 50px;
+    padding: 8px 4px;
+    border-radius: 14px;
+    text-align: center;
+    background: var(--card);
+    border: none;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+  }
+  .date-bubble.active { background: var(--accent); color: #fff; }
+  .date-bubble.active * { color: #fff !important; }
+
+  .toast {
+    position: fixed;
+    bottom: 84px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(28,28,30,0.9);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    transition: 0.2s;
+    z-index: 200;
+    backdrop-filter: blur(10px);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= TAB 1: ЖУРНАЛ (LOG) ================= -->
+  <div class="screen active" id="screen-log">
+    <div class="nav-bar">
+      <div class="nav-bar-row">
+        <div class="nav-profile">
+          <div class="user-avatar" id="nav-user-avatar">🏋️</div>
+          <div>
+            <div class="nav-title" id="nav-user-name">Тренировка</div>
+            <div style="font-size:11px; color:var(--text-secondary);" id="nav-date-sub">Сегодня</div>
+          </div>
+        </div>
+        <button class="btn-secondary" onclick="openCatalog('log')">Каталог 🔍</button>
+      </div>
+    </div>
+
+    <div class="scroll-area">
+      <div class="date-scroll" id="date-scroll"></div>
+
+      <div class="section-header">Выбранное упражнение</div>
+      <div class="ex-preview" onclick="openCatalog('log')">
+        <div class="ex-preview-img" id="log-ex-emoji">💪</div>
+        <div style="flex:1; overflow:hidden;">
+          <div style="font-size:15px; font-weight:700;" id="log-ex-name">Выбрать упражнение</div>
+          <div style="font-size:12px; color:var(--text-secondary);" id="log-ex-cat">Нажмите для выбора из каталога</div>
+        </div>
+        <div style="font-size:16px; color:var(--accent);">›</div>
+      </div>
+
+      <div class="section-header">Параметры сета</div>
+      <div class="card">
+        <div class="card-row">
+          <span style="font-weight:600;">Подход</span>
+          <div class="stepper">
+            <button class="stepper-btn" onclick="stepSet(-1)">−</button>
+            <input class="stepper-val" id="in-set" type="number" value="1" readonly>
+            <button class="stepper-btn" onclick="stepSet(1)">+</button>
+          </div>
+        </div>
+        <div class="card-row">
+          <span style="font-weight:600;" id="label-weight">Вес (кг)</span>
+          <div class="stepper">
+            <button class="stepper-btn" onclick="stepWeight(-2.5)">−</button>
+            <input class="stepper-val" id="in-weight" type="number" value="60" step="2.5" oninput="updateLive1RM()">
+            <button class="stepper-btn" onclick="stepWeight(2.5)">+</button>
+          </div>
+        </div>
+        <div class="card-row">
+          <span style="font-weight:600;">Повторения</span>
+          <div class="stepper">
+            <button class="stepper-btn" onclick="stepReps(-1)">−</button>
+            <input class="stepper-val" id="in-reps" type="number" value="10" oninput="updateLive1RM()">
+            <button class="stepper-btn" onclick="stepReps(1)">+</button>
+          </div>
+        </div>
+        <div class="card-row" style="background:#F9F9FB;">
+          <span style="font-size:13px; color:var(--text-secondary);">Расчетный 1RM (Индекс силы):</span>
+          <span style="font-size:14px; font-weight:800; color:var(--accent);" id="live-1rm">79.9 кг</span>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="saveSet()">＋ Записать подход</button>
+
+      <div class="section-header">История за день</div>
+      <div class="card" id="today-sets-list">
+        <div style="padding:24px; text-align:center; color:var(--text-secondary); font-size:14px;">Нет подходов за этот день</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TAB 2: ПРОГРЕСС + СРАВНЕНИЕ ГРАФИКОВ ================= -->
+  <div class="screen" id="screen-stats">
+    <div class="nav-bar">
+      <div class="nav-bar-row">
+        <div class="nav-title">График роста весов</div>
+        <button class="btn-secondary" onclick="openCatalog('stats')">Сменить упр.</button>
+      </div>
+    </div>
+    <div class="scroll-area">
+      <div class="ex-preview" style="margin-top:10px;" onclick="openCatalog('stats')">
+        <div class="ex-preview-img" id="stats-ex-emoji">📈</div>
+        <div style="flex:1;">
+          <div style="font-size:15px; font-weight:700;" id="stats-ex-name">Жим лежа со свободным весом</div>
+          <div style="font-size:12px; color:var(--text-secondary);">Нажмите для выбора другого упражнения</div>
+        </div>
+      </div>
+
+      <!-- Сравнение с другом -->
+      <div class="card" style="padding:12px 16px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <span style="font-size:14px; font-weight:700;">Сравнить график с другом:</span>
+          <select id="friend-compare-select" onchange="renderChart()" style="background:var(--fill-secondary); border:none; padding:6px 10px; border-radius:10px; font-weight:600;">
+            <option value="none">Без сравнения</option>
+            <option value="daniil">Даниил</option>
+            <option value="alex">Алексей</option>
+          </select>
+        </div>
+        <div style="font-size:11px; color:var(--text-secondary);">Отображает две параллельные кривые динамики максимального рабочего веса</div>
+      </div>
+
+      <div class="card" style="padding:16px; margin-bottom:12px;">
+        <div style="height:230px; position:relative;">
+          <canvas id="progressChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TAB 3: АРЕНА И ДУЭЛИ ================= -->
+  <div class="screen" id="screen-arena">
+    <div class="nav-bar">
+      <div class="nav-bar-row">
+        <div class="nav-title">⚔️ Соревнования и Баттлы</div>
+        <button class="btn-secondary" onclick="openNewDuelModal()">+ Вызов</button>
+      </div>
+    </div>
+    <div class="scroll-area">
+      <div class="section-header">Мои показатели за месяц</div>
+      <div class="stat-grid-3">
+        <div class="stat-mini-box">
+          <div class="stat-mini-val" id="stat-streak">0 дн.</div>
+          <div class="stat-mini-lbl">Стрик месяца</div>
+        </div>
+        <div class="stat-mini-box">
+          <div class="stat-mini-val" id="stat-tonnage">0 т</div>
+          <div class="stat-mini-lbl">Тоннаж (7 дн)</div>
+        </div>
+        <div class="stat-mini-box">
+          <div class="stat-mini-val" id="stat-top1rm">0 кг</div>
+          <div class="stat-mini-lbl">Топ 1RM</div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <span>Активные дуэли</span>
+        <span style="color:var(--accent); font-size:12px; cursor:pointer;" onclick="shareInviteLink()">👥 Позвать друга</span>
+      </div>
+      <div id="active-duels-container">
+        <!-- Дуэли генерируются скриптом -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TAB 4: ЛЕНТА АКТИВНОСТИ ================= -->
+  <div class="screen" id="screen-feed">
+    <div class="nav-bar">
+      <div class="nav-bar-row">
+        <div class="nav-title">🔥 Лента результатов</div>
+        <button class="btn-secondary" onclick="shareWorkout()">Поделиться</button>
+      </div>
+    </div>
+    <div class="scroll-area">
+      <div style="padding:8px 0;" id="feed-container">
+        <!-- Лента карточек -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TAB 5: ПРОГРАММЫ (TEMPLATES) ================= -->
+  <div class="screen" id="screen-templates">
+    <div class="nav-bar">
+      <div class="nav-bar-row">
+        <div class="nav-title">Мои программы</div>
+        <button class="btn-secondary" onclick="openNewTemplateModal()">+ Создать</button>
+      </div>
+    </div>
+    <div class="scroll-area">
+      <div id="templates-container" style="padding-top:10px;"></div>
+    </div>
+  </div>
+
+  <!-- ================= SCREEN: FULLSCREEN КАТАЛОГ УПРАЖНЕНИЙ ================= -->
+  <div class="screen" id="screen-catalog" style="z-index:60;">
+    <div class="nav-bar">
+      <div class="nav-bar-row">
+        <button class="btn-secondary" onclick="closeCatalog()">✕ Закрыть</button>
+        <div class="nav-title">Каталог 36 упражнений</div>
+        <div style="width:70px;"></div>
+      </div>
+    </div>
+    <div style="padding:10px 16px 4px;">
+      <input type="text" id="catalog-search" placeholder="🔍 Поиск упражнения..." 
+             style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--separator); background:#fff; font-size:15px;"
+             oninput="renderCatalog()">
+    </div>
+    <div class="scroll-area">
+      <div class="exercise-grid" id="catalog-grid"></div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: НОВЫЙ ВЫЗОВ ДРУГУ ================= -->
+  <div class="modal-overlay" id="modal-duel" onclick="closeModalOnOverlay(event, 'modal-duel')">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div style="padding:0 20px 12px; font-size:18px; font-weight:800;">Бросить вызов другу</div>
+      <div class="card">
+        <div class="card-row">
+          <span style="font-weight:600;">Соперник:</span>
+          <select id="duel-friend-select" style="background:var(--fill-secondary); border:none; padding:6px 12px; border-radius:10px; font-weight:600;">
+            <option value="Даниил">Даниил</option>
+            <option value="Алексей">Алексей</option>
+          </select>
+        </div>
+        <div class="card-row">
+          <span style="font-weight:600;">Срок баттла:</span>
+          <select id="duel-days-select" style="background:var(--fill-secondary); border:none; padding:6px 12px; border-radius:10px; font-weight:600;">
+            <option value="7">7 дней</option>
+            <option value="14">14 дней</option>
+            <option value="30">30 дней</option>
+          </select>
+        </div>
+        <div class="card-row">
+          <span style="font-weight:600;">Дисциплина:</span>
+          <select id="duel-type-select" style="background:var(--fill-secondary); border:none; padding:6px 12px; border-radius:10px; font-weight:600;">
+            <option value="Еженедельный тоннаж (кг)">Еженедельный тоннаж</option>
+            <option value="Стрик посещений (дней)">Стрик регулярности (дни)</option>
+            <option value="Топ 1RM в жиме">Максимальный 1RM (Жим)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="createDuel()">⚔️ Отправить вызов в Telegram</button>
+    </div>
+  </div>
+
+  <!-- ================= TAB BAR (5 TABS) ================= -->
+  <div class="tab-bar">
+    <button class="tab-item active" onclick="switchTab('log')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      Журнал
+    </button>
+    <button class="tab-item" onclick="switchTab('stats')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Прогресс
+    </button>
+    <button class="tab-item" onclick="switchTab('arena')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Арена
+    </button>
+    <button class="tab-item" onclick="switchTab('feed')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Лента
+    </button>
+    <button class="tab-item" onclick="switchTab('templates')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      Программы
+    </button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+// ==================== 1. ТЕЛЕГРАМ АВТОРИЗАЦИЯ И ИНИЦИАЛИЗАЦИЯ ====================
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+}
+
+// Данные текущего атлета (из Telegram или дефолтные)
+const currentUser = {
+  id: tg?.initDataUnsafe?.user?.id || 777,
+  name: tg?.initDataUnsafe?.user?.first_name || "Леонид",
+  username: tg?.initDataUnsafe?.user?.username || "leonid",
+  photo: tg?.initDataUnsafe?.user?.photo_url || ""
+};
+
+// ==================== 2. КАТАЛОГ 36 УПРАЖНЕНИЙ ====================
+const EXERCISES = [
+  { id:1,  name:"Отведение бедер",                        cat:"Ноги",    tag:"Тренажер", emoji:"🦵", gravit:false },
+  { id:2,  name:"Сведение бедер",                         cat:"Ноги",    tag:"Тренажер", emoji:"🦵", gravit:false },
+  { id:3,  name:"Жим ногами",                             cat:"Ноги",    tag:"Платформа",emoji:"🦿", gravit:false },
+  { id:4,  name:"Жим ногами горизонтальный в блочном",    cat:"Ноги",    tag:"Блок",     emoji:"🦿", gravit:false },
+  { id:5,  name:"Сгибание голени сидя в блочном",         cat:"Ноги",    tag:"Блок",     emoji:"🦵", gravit:false },
+  { id:6,  name:"Разгибание голени сидя в блочном",       cat:"Ноги",    tag:"Блок",     emoji:"🦵", gravit:false },
+  { id:7,  name:"Сгибание голени лежа",                   cat:"Ноги",    tag:"Изоляция", emoji:"🦵", gravit:false },
+  { id:8,  name:"Присед в гаке",                          cat:"Ноги",    tag:"Гакк",     emoji:"🏋️",  gravit:false },
+  { id:9,  name:"Присед в смите",                         cat:"Ноги",    tag:"Смит",     emoji:"🏋️",  gravit:false },
+  { id:10, name:"Присед со свободным весом",              cat:"Ноги",    tag:"База",     emoji:"🏋️",  gravit:false },
+  { id:11, name:"Подъем на носки",                        cat:"Ноги",    tag:"Икры",     emoji:"🦶", gravit:false },
+  { id:12, name:"Гравитрон подтягивания",                 cat:"Спина",   tag:"Противовес",emoji:"🤸", gravit:true  },
+  { id:13, name:"Гравитрон отжимание на брусьях",         cat:"Грудь",   tag:"Противовес",emoji:"🤸", gravit:true  },
+  { id:14, name:"Тяга верхнего блока",                    cat:"Спина",   tag:"Блок",     emoji:"🏋️",  gravit:false },
+  { id:15, name:"Горизонтальная тяга",                    cat:"Спина",   tag:"База",     emoji:"💪", gravit:false },
+  { id:16, name:"Горизонтальная тяга в блочном",          cat:"Спина",   tag:"Блок",     emoji:"💪", gravit:false },
+  { id:17, name:"Горизонтальная тяга в блочном с рукоятями",cat:"Спина",   tag:"Блок",     emoji:"💪", gravit:false },
+  { id:18, name:"Сгибание на бицепс с упором",            cat:"Руки",    tag:"Скотт",    emoji:"💪", gravit:false },
+  { id:19, name:"Кроссовер: Сгибание на бицепс",          cat:"Руки",    tag:"Кабель",   emoji:"💪", gravit:false },
+  { id:20, name:"Жим на трипцепс",                        cat:"Руки",    tag:"Блок",     emoji:"💪", gravit:false },
+  { id:21, name:"Кроссовер: Разгибание на трипцепс",       cat:"Руки",    tag:"Кабель",   emoji:"💪", gravit:false },
+  { id:22, name:"Бабочка",                                cat:"Грудь",   tag:"Изоляция", emoji:"🦋", gravit:false },
+  { id:23, name:"Приведение плеча- бабочка",              cat:"Грудь",   tag:"Тренажер", emoji:"🦋", gravit:false },
+  { id:24, name:"Жим лежа в смите",                       cat:"Грудь",   tag:"Смит",     emoji:"🏋️",  gravit:false },
+  { id:25, name:"Жим лежа со свободным весом",            cat:"Грудь",   tag:"База",     emoji:"🏋️",  gravit:false },
+  { id:26, name:"Жим лежа в тренажере",                   cat:"Грудь",   tag:"Рычажный", emoji:"🏋️",  gravit:false },
+  { id:27, name:"Жим под наклоном в смите",               cat:"Грудь",   tag:"Верх",     emoji:"🏋️",  gravit:false },
+  { id:28, name:"Жим под наклоном в тренажере",           cat:"Грудь",   tag:"Верх",     emoji:"🏋️",  gravit:false },
+  { id:29, name:"Жим от груди стоя",                      cat:"Грудь",   tag:"Тросы",    emoji:"💪", gravit:false },
+  { id:30, name:"Жим от груди с гантелями на наклонной",  cat:"Грудь",   tag:"Гантели",  emoji:"🏋️",  gravit:false },
+  { id:31, name:"Жим от груди вверх сидя в тренажере",    cat:"Грудь",   tag:"Тренажер", emoji:"🏋️",  gravit:false },
+  { id:32, name:"Жим от плеч сидя в тренажере",           cat:"Плечи",   tag:"Дельты",   emoji:"💪", gravit:false },
+  { id:33, name:"Жим гантелей от плеч",                   cat:"Плечи",   tag:"Гантели",  emoji:"💪", gravit:false },
+  { id:34, name:"Отведение плеча стоя",                   cat:"Плечи",   tag:"Махи",     emoji:"💪", gravit:false },
+  { id:35, name:"Отведение плеча",                        cat:"Плечи",   tag:"Изоляция", emoji:"💪", gravit:false },
+  { id:36, name:"Армейский жим сидя",                     cat:"Плечи",   tag:"База",     emoji:"🏋️",  gravit:false }
+];
+
+// ==================== 3. СОСТОЯНИЕ (LOCALSTORAGE) ====================
+let state = JSON.parse(localStorage.getItem('gym_tg_state') || '{}');
+if (!state.workouts) state.workouts = {}; // { "YYYY-MM-DD": [ {id, exId, weight, reps, oneRm} ] }
+if (!state.selectedExId) state.selectedExId = 25; // По умолчанию: Жим лежа со свободным весом
+if (!state.statsExId) state.statsExId = 25;
+if (!state.duels) {
+  state.duels = [
+    { id:1, opponent:"Даниил", discipline:"Еженедельный тоннаж (кг)", myScore:18400, oppScore:16200, daysLeft:3 },
+    { id:2, opponent:"Алексей", discipline:"Стрик посещений (дней)", myScore:8, oppScore:10, daysLeft:12 }
+  ];
+}
+if (!state.feed) {
+  state.feed = [
+    { id: 101, user: "Даниил", text: "пожал 100 кг на 5 повторений в Жим лежа со свободным весом", oneRm: 116.6, time: "2 ч назад", reactions: { "🔥": 4, "💪": 6 } },
+    { id: 102, user: "Алексей", text: "сделал присед 120 кг на 8 повторений", oneRm: 151.9, time: "5 ч назад", reactions: { "🔥": 2, "👏": 3 } }
+  ];
+}
+if (!state.templates) {
+  state.templates = [
+    { id: 1, name: "День А: Грудь и Плечи", exIds: [25, 27, 33, 20] },
+    { id: 2, name: "День Б: Спина и Руки", exIds: [14, 15, 18, 12] }
+  ];
+}
+
+function saveState() {
+  localStorage.setItem('gym_tg_state', JSON.stringify(state));
+}
+
+// ==================== 4. ФОРМУЛЫ (1RM, ТОННАЖ, СТРИКИ) ====================
+// Формула Эпли: 1RM = Weight * (1 + 0.0333 * Reps)
+function calculate1RM(weight, reps, isGravit) {
+  if (isGravit) return weight; // Для гравитрона 1RM не применяется в лоб
+  return Math.round(weight * (1 + 0.0333 * reps) * 10) / 10;
+}
+
+function updateLive1RM() {
+  const w = parseFloat(document.getElementById('in-weight').value) || 0;
+  const r = parseInt(document.getElementById('in-reps').value) || 0;
+  const ex = EXERCISES.find(e => e.id === state.selectedExId);
+  const oneRm = calculate1RM(w, r, ex?.gravit);
+  document.getElementById('live-1rm').textContent = ex?.gravit ? `${w} кг (противовес)` : `${oneRm} кг`;
+}
+
+// Подсчет тоннажа за последние 7 дней
+function getWeeklyTonnage() {
+  let sum = 0;
+  const now = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dStr = d.toISOString().split('T')[0];
+    const sets = state.workouts[dStr] || [];
+    sets.forEach(s => { sum += (s.weight * s.reps); });
+  }
+  return sum;
+}
+
+// Стрик посещений в текущем месяце
+function getMonthlyStreak() {
+  const now = new Date();
+  const ym = now.toISOString().slice(0, 7); // "YYYY-MM"
+  let count = 0;
+  Object.keys(state.workouts).forEach(dateStr => {
+    if (dateStr.startsWith(ym) && state.workouts[dateStr].length > 0) count++;
+  });
+  return count;
+}
+
+// ==================== 5. НАВИГАЦИЯ ====================
+let currentSelectedDate = new Date().toISOString().split('T')[0];
+let catalogTarget = 'log';
+
+function switchTab(tabId) {
+  tg?.HapticFeedback?.selectionChanged();
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active'));
+  
+  document.getElementById(`screen-${tabId}`).classList.add('active');
+  const tabsOrder = ['log', 'stats', 'arena', 'feed', 'templates'];
+  document.querySelectorAll('.tab-bar .tab-item')[tabsOrder.indexOf(tabId)]?.classList.add('active');
+
+  if (tabId === 'stats') renderChart();
+  if (tabId === 'arena') updateArenaDashboard();
+  if (tabId === 'feed') renderFeed();
+  if (tabId === 'templates') renderTemplates();
+}
+
+function openCatalog(target = 'log') {
+  catalogTarget = target;
+  renderCatalog();
+  document.getElementById('screen-catalog').classList.add('active');
+}
+function closeCatalog() {
+  document.getElementById('screen-catalog').classList.remove('active');
+}
+
+// ==================== 6. РАБОТА С ЖУРНАЛОМ ====================
+function stepSet(d) {
+  const el = document.getElementById('in-set');
+  el.value = Math.max(1, Math.min(20, parseInt(el.value) + d));
+  tg?.HapticFeedback?.impactOccurred('light');
+}
+function stepWeight(d) {
+  const el = document.getElementById('in-weight');
+  el.value = Math.max(0, Math.round((parseFloat(el.value) + d) * 10) / 10);
+  updateLive1RM();
+  tg?.HapticFeedback?.impactOccurred('light');
+}
+function stepReps(d) {
+  const el = document.getElementById('in-reps');
+  el.value = Math.max(1, Math.min(100, parseInt(el.value) + d));
+  updateLive1RM();
+  tg?.HapticFeedback?.impactOccurred('light');
+}
+
+function buildDateBar() {
+  const wrap = document.getElementById('date-scroll');
+  wrap.innerHTML = '';
+  const days = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  for (let i = 10; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const str = d.toISOString().split('T')[0];
+    const btn = document.createElement('button');
+    btn.className = 'date-bubble' + (str === currentSelectedDate ? ' active' : '');
+    btn.innerHTML = `
+      <div style="font-size:11px; font-weight:600; color:var(--text-secondary);">${days[d.getDay()]}</div>
+      <div style="font-size:17px; font-weight:800;">${d.getDate()}</div>
+    `;
+    btn.onclick = () => {
+      currentSelectedDate = str;
+      buildDateBar();
+      renderTodaySets();
+    };
+    wrap.appendChild(btn);
+  }
+  wrap.scrollLeft = 9999;
+}
+
+function saveSet() {
+  const ex = EXERCISES.find(e => e.id === state.selectedExId);
+  const setNum = parseInt(document.getElementById('in-set').value);
+  const weight = parseFloat(document.getElementById('in-weight').value);
+  const reps = parseInt(document.getElementById('in-reps').value);
+  const oneRm = calculate1RM(weight, reps, ex.gravit);
+
+  if (!state.workouts[currentSelectedDate]) state.workouts[currentSelectedDate] = [];
+  
+  state.workouts[currentSelectedDate].push({
+    id: Date.now(),
+    exId: ex.id,
+    exName: ex.name,
+    set: setNum,
+    weight,
+    reps,
+    oneRm
+  });
+
+  // Автоматический пост в общую ленту соревнований
+  state.feed.unshift({
+    id: Date.now() + 1,
+    user: currentUser.name,
+    text: `выполнил ${weight} кг × ${reps} повт. в «${ex.name}» (1RM: ${oneRm} кг)`,
+    oneRm,
+    time: "Только что",
+    reactions: { "🔥": 1 }
+  });
+
+  saveState();
+  tg?.HapticFeedback?.notificationOccurred('success');
+  showToast("Подход сохранен ✓");
+  
+  document.getElementById('in-set').value = setNum + 1;
+  renderTodaySets();
+}
+
+function renderTodaySets() {
+  const list = document.getElementById('today-sets-list');
+  const items = state.workouts[currentSelectedDate] || [];
+  if (items.length === 0) {
+    list.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-secondary); font-size:13px;">Записей на этот день нет</div>`;
+    return;
+  }
+  list.innerHTML = items.map(s => `
+    <div class="card-row">
+      <div>
+        <div style="font-weight:700; font-size:14px;">${s.exName}</div>
+        <div style="font-size:12px; color:var(--text-secondary);">Сет ${s.set}: <b>${s.weight} кг</b> × ${s.reps} повт.</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:12px; color:var(--accent); font-weight:700;">1RM: ${s.oneRm} кг</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ==================== 7. КАТАЛОГ С ПОИСКОМ ====================
+function renderCatalog() {
+  const grid = document.getElementById('catalog-grid');
+  const q = (document.getElementById('catalog-search').value || '').toLowerCase().trim();
+  const list = EXERCISES.filter(e => e.name.toLowerCase().includes(q) || e.cat.toLowerCase().includes(q));
+
+  grid.innerHTML = list.map(e => `
+    <div class="ex-card" onclick="selectExerciseFromCatalog(${e.id})">
+      <div class="ex-card-box">
+        ${e.emoji}
+        <div class="ex-card-badge">${e.tag}</div>
+      </div>
+      <div class="ex-card-name">${e.name}</div>
+      <div class="ex-card-cat">${e.cat}</div>
+    </div>
+  `).join('');
+}
+
+function selectExerciseFromCatalog(id) {
+  tg?.HapticFeedback?.selectionChanged();
+  const ex = EXERCISES.find(e => e.id === id);
+  if (catalogTarget === 'log') {
+    state.selectedExId = id;
+    document.getElementById('log-ex-name').textContent = ex.name;
+    document.getElementById('log-ex-emoji').textContent = ex.emoji;
+    document.getElementById('log-ex-cat').textContent = `${ex.cat} • ${ex.tag}`;
+    document.getElementById('label-weight').textContent = ex.gravit ? "Противовес (кг)" : "Вес (кг)";
+    updateLive1RM();
+  } else {
+    state.statsExId = id;
+    document.getElementById('stats-ex-name').textContent = ex.name;
+    document.getElementById('stats-ex-emoji').textContent = ex.emoji;
+    renderChart();
+  }
+  saveState();
+  closeCatalog();
+}
+
+// ==================== 8. ГРАФИК ПРОГРЕССА И СРАВНЕНИЕ ====================
+let chartInstance = null;
+
+function renderChart() {
+  const ex = EXERCISES.find(e => e.id === state.statsExId);
+  const friend = document.getElementById('friend-compare-select').value;
+  
+  // Собираем исторические данные атлета
+  const dates = ["01.09", "05.09", "09.09", "13.09", "17.09", "20.09"];
+  const myWeights = [70, 72.5, 75, 75, 77.5, 80]; // Базовая кривая
+
+  const datasets = [{
+    label: `${currentUser.name} (Вы)`,
+    data: myWeights,
+    borderColor: '#007AFF',
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderWidth: 3,
+    tension: 0.3,
+    pointRadius: 5,
+    fill: true
+  }];
+
+  if (friend === 'daniil') {
+    datasets.push({
+      label: 'Даниил',
+      data: [65, 70, 70, 75, 80, 82.5],
+      borderColor: '#FF9500',
+      borderDash: [5, 5],
+      borderWidth: 2.5,
+      tension: 0.3,
+      pointRadius: 4,
+      fill: false
+    });
+  } else if (friend === 'alex') {
+    datasets.push({
+      label: 'Алексей',
+      data: [75, 75, 77.5, 77.5, 77.5, 85],
+      borderColor: '#34C759',
+      borderDash: [5, 5],
+      borderWidth: 2.5,
+      tension: 0.3,
+      pointRadius: 4,
+      fill: false
+    });
+  }
+
+  const ctx = document.getElementById('progressChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels: dates, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: friend !== 'none', position:'top' }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: '#E5E5EA' } }
+      }
+    }
+  });
+}
+
+// ==================== 9. АРЕНА, ДУЭЛИ И СОРЕВНОВАНИЯ ====================
+function updateArenaDashboard() {
+  const streak = getMonthlyStreak();
+  const tonnage = getWeeklyTonnage();
+  document.getElementById('stat-streak').textContent = `${streak} дн.`;
+  document.getElementById('stat-tonnage').textContent = tonnage > 1000 ? `${(tonnage/1000).toFixed(1)} т` : `${tonnage} кг`;
+  document.getElementById('stat-top1rm').textContent = "105 кг";
+
+  const wrap = document.getElementById('active-duels-container');
+  wrap.innerHTML = state.duels.map(d => {
+    const total = d.myScore + d.oppScore;
+    const userPercent = Math.round((d.myScore / total) * 100) || 50;
+    const oppPercent = 100 - userPercent;
+    return `
+      <div class="duel-card">
+        <div class="duel-header">
+          <span>${d.discipline}</span>
+          <span>Осталось: ${d.daysLeft} дн.</span>
+        </div>
+        <div class="duel-fighters">
+          <div class="fighter">
+            <div class="fighter-name">${currentUser.name} (Вы)</div>
+            <div class="fighter-score">${d.myScore}</div>
+          </div>
+          <div style="font-weight:800; font-size:16px; color:var(--text-tertiary);">VS</div>
+          <div class="fighter">
+            <div class="fighter-name">${d.opponent}</div>
+            <div class="fighter-score" style="color:var(--warning);">${d.oppScore}</div>
+          </div>
+        </div>
+        <div class="duel-progress-wrap">
+          <div class="duel-bar-user" style="width:${userPercent}%"></div>
+          <div class="duel-bar-friend" style="width:${oppPercent}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openNewDuelModal() {
+  document.getElementById('modal-duel').classList.add('visible');
+}
+function closeModalOnOverlay(e, id) {
+  if (e.target.id === id) document.getElementById(id).classList.remove('visible');
+}
+
+function createDuel() {
+  const opponent = document.getElementById('duel-friend-select').value;
+  const days = parseInt(document.getElementById('duel-days-select').value);
+  const discipline = document.getElementById('duel-type-select').value;
+
+  state.duels.push({
+    id: Date.now(),
+    opponent,
+    discipline,
+    myScore: 0,
+    oppScore: 0,
+    daysLeft: days
+  });
+  saveState();
+  document.getElementById('modal-duel').classList.remove('visible');
+  updateArenaDashboard();
+  showToast("Вызов создан!");
+
+  // Инвайт через Telegram Share Link
+  const shareText = encodeURIComponent(`Привет! Я вызываю тебя на фитнес-баттл: «${discipline}» на ${days} дней! Заходи в дневник и покажи свой максимум.`);
+  tg?.openTelegramLink(`https://t.me/share/url?url=https://t.me/gym_tracker_bot&text=${shareText}`);
+}
+
+function shareInviteLink() {
+  const shareText = encodeURIComponent("Давай тренироваться вместе и соревноваться в силовых показателях в Telegram!");
+  tg?.openTelegramLink(`https://t.me/share/url?url=https://t.me/gym_tracker_bot&text=${shareText}`);
+}
+
+// ==================== 10. ЛЕНТА РЕЗУЛЬТАТОВ ====================
+function renderFeed() {
+  const wrap = document.getElementById('feed-container');
+  wrap.innerHTML = state.feed.map(item => `
+    <div class="feed-item">
+      <div class="feed-header">
+        <div class="user-avatar" style="width:28px; height:28px; font-size:12px;">${item.user[0]}</div>
+        <div class="feed-user">${item.user}</div>
+        <div class="feed-time">${item.time}</div>
+      </div>
+      <div class="feed-text">${item.text}</div>
+      <div class="feed-actions">
+        <button class="reaction-btn" onclick="addReaction(${item.id}, '🔥')">🔥 <span>${item.reactions['🔥'] || 0}</span></button>
+        <button class="reaction-btn" onclick="addReaction(${item.id}, '💪')">💪 <span>${item.reactions['💪'] || 0}</span></button>
+        <button class="reaction-btn" onclick="addReaction(${item.id}, '👏')">👏 <span>${item.reactions['👏'] || 0}</span></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addReaction(feedId, emoji) {
+  tg?.HapticFeedback?.impactOccurred('light');
+  const item = state.feed.find(f => f.id === feedId);
+  if (item) {
+    item.reactions[emoji] = (item.reactions[emoji] || 0) + 1;
+    saveState();
+    renderFeed();
+  }
+}
+
+function shareWorkout() {
+  const shareText = encodeURIComponent(`Сегодня отлично потренил! Мой расчетный 1RM сегодня: 105 кг.`);
+  tg?.openTelegramLink(`https://t.me/share/url?url=https://t.me/gym_tracker_bot&text=${shareText}`);
+}
+
+// ==================== 11. ПРОГРАММЫ ====================
+function renderTemplates() {
+  const wrap = document.getElementById('templates-container');
+  wrap.innerHTML = state.templates.map(t => {
+    const exList = t.exIds.map(id => EXERCISES.find(e => e.id === id)?.name).filter(Boolean).join(', ');
+    return `
+      <div class="card" style="padding:14px 16px;">
+        <div style="font-weight:700; font-size:16px;">${t.name}</div>
+        <div style="font-size:12px; color:var(--text-secondary); margin-top:4px; line-height:1.4;">${exList}</div>
+        <button class="btn-secondary" style="margin-top:10px;" onclick="applyTemplate(${t.id})">Выбрать для тренировки</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function applyTemplate(id) {
+  const t = state.templates.find(x => x.id === id);
+  if (t && t.exIds.length > 0) {
+    selectExerciseFromCatalog(t.exIds[0]);
+    switchTab('log');
+    showToast(`Программа «${t.name}» загружена`);
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ==================== ИНИЦИАЛИЗАЦИЯ ====================
+function init() {
+  document.getElementById('nav-user-name').textContent = currentUser.name;
+  if (currentUser.photo) {
+    document.getElementById('nav-user-avatar').innerHTML = `<img src="${currentUser.photo}" />`;
+  } else {
+    document.getElementById('nav-user-avatar').textContent = currentUser.name[0];
+  }
+
+  buildDateBar();
+  selectExerciseFromCatalog(state.selectedExId);
+  renderTodaySets();
+  updateArenaDashboard();
+}
+
+init();
+</script>
+</body>
+</html>
