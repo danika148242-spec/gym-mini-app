@@ -159,7 +159,7 @@
     cursor: pointer;
   }
 
-  /* TAB BAR (5 Вкладок) */
+  /* TAB BAR */
   .tab-bar {
     display: flex;
     background: rgba(255,255,255,0.98);
@@ -749,7 +749,7 @@
       <div class="scroll-area">
         <div style="padding:10px 0;" id="feed-container">
           <div class="card" style="padding:32px 16px; text-align:center; color:var(--text-secondary); font-size:14px;">
-            В ленте пока пусто.<br>Когда вы или ваши друзья побьете личный рекорд и решите им поделиться, он появится здесь!
+            В ленте пока пусто.<br>Когда вы побьете свой личный рекорд и подтвердите публикацию, он появится здесь!
           </div>
         </div>
       </div>
@@ -819,9 +819,9 @@
       <div class="modal-handle"></div>
       <div style="padding:0 20px 12px; font-size:18px; font-weight:800;">Отправить заявку в друзья</div>
       <div style="padding:0 20px 14px; font-size:13px; color:var(--text-secondary); line-height:1.4;">
-        При нажатии кнопки откроется Telegram — выберите друга, чтобы отправить ему приглашение. При переходе он появится у вас в списке!
+        При нажатии кнопки откроется выбор чата Telegram — отправьте ссылку другу, чтобы он появился у вас в списке!
       </div>
-      <button class="btn-primary" onclick="shareFriendRequestLink()">👥 Отправить ссылку-приглашение в Telegram</button>
+      <button class="btn-primary" onclick="shareFriendRequestLink()">👥 Отправить заявку в Telegram</button>
     </div>
   </div>
 
@@ -925,8 +925,8 @@ if (!state) {
     workouts: {},
     selectedExId: 25,
     statsExId: 25,
-    activeTemplateId: null, // Идентификатор активной программы в Журнале
-    friends: [],            // { id, name, shareWithHim: true/false, status: 'accepted'|'incoming' }
+    activeTemplateId: null,
+    friends: [],
     duels: [],
     feed: [],
     templates: []
@@ -937,7 +937,7 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-// 36 упражнений
+// 36 Базовых упражнений
 const EXERCISES = [
   { id:1,  name:"Отведение бедер",                        cat:"Ноги",    tag:"Тренажер", emoji:"🦵", gravit:false },
   { id:2,  name:"Сведение бедер",                         cat:"Ноги",    tag:"Тренажер", emoji:"🦵", gravit:false },
@@ -977,32 +977,59 @@ const EXERCISES = [
   { id:36, name:"Армейский жим сидя",                     cat:"Плечи",   tag:"База",     emoji:"🏋️",  gravit:false }
 ];
 
-// ==================== 2. ОБРАБОТКА ВХОДЯЩИХ ССЫЛОК TELEGRAM ====================
-// Проверка start_param при открытии приложения по ссылке
+// ==================== 2. ОБРАБОТКА ВХОДЯЩИХ ЗАЯВОК ====================
 function checkIncomingTelegramParams() {
-  const param = tg?.initDataUnsafe?.start_param;
-  if (!param) return;
+  const urlParams = new URLSearchParams(window.location.search);
 
-  // Формат: fr_ID_NAME
-  if (param.startsWith('fr_')) {
-    const parts = param.split('_');
-    const senderId = parts[1];
-    const senderName = decodeURIComponent(parts[2] || 'Друг');
+  // Сохраняем имя бота для ссылок
+  const botParam = urlParams.get('bot');
+  if (botParam) {
+    localStorage.setItem('gym_bot_username', botParam);
+  }
 
-    // Проверяем, нет ли уже такого друга
-    const exists = state.friends.find(f => f.id == senderId);
-    if (!exists && senderId != currentUser.id) {
+  // 1. Проверка через стандартные GET параметры URL
+  const senderId = urlParams.get('fr_id');
+  let senderName = urlParams.get('fr_name');
+
+  // 2. Проверка через нативный Telegram start_param (startapp)
+  const tgParam = tg?.initDataUnsafe?.start_param;
+  let finalSenderId = senderId;
+  let finalSenderName = senderName;
+
+  if (!finalSenderId && tgParam && tgParam.startsWith('fr_')) {
+    const parts = tgParam.split('_');
+    finalSenderId = parts[1];
+    finalSenderName = decodeURIComponent(parts[2] || 'Друг');
+  }
+
+  if (finalSenderId && finalSenderId != currentUser.id) {
+    finalSenderName = decodeURIComponent(finalSenderName || 'Друг');
+    const exists = state.friends.find(f => f.id == finalSenderId);
+
+    if (!exists) {
       state.friends.push({
-        id: senderId,
-        name: senderName,
+        id: finalSenderId,
+        name: finalSenderName,
         shareWithHim: true,
         status: 'incoming'
       });
       saveState();
       switchTab('arena');
-      showToast(`Получена заявка в друзья от ${senderName}!`);
+      showToast(`Получена заявка в друзья от ${finalSenderName}!`);
     }
   }
+}
+
+// Отправка заявки другу через Telegram
+function shareFriendRequestLink() {
+  document.getElementById('modal-friend').classList.remove('visible');
+  const botName = localStorage.getItem('gym_bot_username') || 'my_gym_tracker_bot';
+  const safeName = encodeURIComponent(currentUser.name);
+  // Используем прямую реферальную ссылку
+  const inviteLink = `https://t.me/${botName}?start=${currentUser.id}`;
+  const shareText = encodeURIComponent(`Привет! Добавляйся ко мне в друзья в дневнике тренировок:`);
+
+  tg?.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${shareText}`);
 }
 
 // ==================== 3. МЕТРИКИ И РЕКОРДЫ ====================
@@ -1201,7 +1228,6 @@ function saveSet() {
   document.getElementById('in-set').value = setNum + 1;
   renderTodaySets();
 
-  // Если это рекорд — предлагаем поделиться в ленте
   if (isNewPR) {
     pendingPRRecord = {
       id: Date.now() + 2,
@@ -1499,17 +1525,6 @@ function updateArenaDashboard() {
 
 function openAddFriendModal() {
   document.getElementById('modal-friend').classList.add('visible');
-}
-
-// Отправка ссылки на добавление через Telegram
-function shareFriendRequestLink() {
-  document.getElementById('modal-friend').classList.remove('visible');
-  const safeName = encodeURIComponent(currentUser.name);
-  const botUser = "my_gym_tracker_bot"; // Юзернейм вашего бота
-  const inviteLink = `https://t.me/${botUser}?startapp=fr_${currentUser.id}_${safeName}`;
-  const shareText = encodeURIComponent(`Привет! Добавляйся ко мне в друзья в приложении Дневника тренировок:`);
-  
-  tg?.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${shareText}`);
 }
 
 function acceptFriendRequest(senderId) {
